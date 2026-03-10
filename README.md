@@ -93,8 +93,8 @@ ssh -i C:\Users\manir\.ssh\oracle-key.key ubuntu@<YOUR-VM-PUBLIC-IP>
 ```bash
 # On the Oracle VM:
 cd ~
-git clone https://github.com/<YOUR-USERNAME>/fifto-server.git
-cd fifto-server
+git clone https://github.com/maniraja5599/Quantman-Login-For-Maniraja.git
+cd Quantman-Login-For-Maniraja
 
 # Run the setup script (installs Node, Chromium, PM2, dependencies)
 chmod +x setup-oracle.sh
@@ -140,7 +140,7 @@ Open in browser: `http://<YOUR-VM-PUBLIC-IP>:3333`
 ## Updating the Server
 
 ```bash
-cd ~/fifto-server
+cd ~/Quantman-Login-For-Maniraja
 git pull
 npm install
 pm2 restart fifto
@@ -151,13 +151,10 @@ pm2 restart fifto
 ## Push to GitHub (from your local PC)
 
 ```bash
-# Create a PRIVATE repo on github.com first, then:
-git remote add origin https://github.com/<YOUR-USERNAME>/fifto-server.git
-git branch -M main
-git push -u origin main
+git remote add origin https://github.com/maniraja5599/Quantman-Login-For-Maniraja.git
+git branch -M master
+git push -u origin master
 ```
-
-> Use a **private repo** since `.env.example` contains partial credentials.
 
 ---
 
