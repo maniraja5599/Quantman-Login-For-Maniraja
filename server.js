@@ -137,6 +137,11 @@ function getTelegramConfig() {
     botToken: tg.botToken || process.env.TELEGRAM_BOT_TOKEN || '',
     chatId: tg.chatId || process.env.TELEGRAM_CHAT_ID || '',
     enabled: tg.enabled !== undefined ? tg.enabled : true,
+    controlEnabled:
+      tg.controlEnabled !== undefined
+        ? !!tg.controlEnabled
+        : String(process.env.TELEGRAM_CONTROL_ENABLED || '').toLowerCase() === '1' ||
+          String(process.env.TELEGRAM_CONTROL_ENABLED || '').toLowerCase() === 'true',
   };
 }
 
@@ -246,6 +251,191 @@ function buildScheduleMessage(snap) {
 
 function tgNotify(title, message) {
   sendTelegram(title, message).catch(() => {});
+}
+
+/* ── Telegram Control (remote commands) ───────────────── */
+
+async function sendTelegramToChat(chatId, title, message) {
+  const cfg = getTelegramConfig();
+  if (!cfg.enabled || !cfg.botToken || !chatId) return { ok: false, reason: 'not configured or disabled' };
+  const text = `*${escapeMarkdown(title)}*\n${escapeMarkdown(message)}`;
+  const url = `https://api.telegram.org/bot${cfg.botToken}/sendMessage`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'MarkdownV2' }),
+    });
+    const data = await res.json();
+    return { ok: data.ok, description: data.description };
+  } catch (err) {
+    return { ok: false, reason: err.message };
+  }
+}
+
+function telegramHelpText() {
+  return [
+    'Commands:',
+    '/status  - show automation state',
+    '/start   - start/resume automation',
+    '/stop    - stop automation',
+    '/pause 1 - pause for N days (example: /pause 3)',
+    '/run     - run all selected brokers now',
+    '/schedule HH:MM - change daily time (example: /schedule 08:45)',
+  ].join('\n');
+}
+
+function isAllowedTelegramChat(chatId) {
+  const cfg = getTelegramConfig();
+  return String(chatId) === String(cfg.chatId);
+}
+
+async function handleTelegramCommand(textRaw, fromChatId) {
+  const text = String(textRaw || '').trim();
+  if (!text) return;
+
+  const snapBefore = getAutomationSnapshot();
+  const words = text.split(/\s+/);
+  const cmd = String(words[0] || '').toLowerCase();
+
+  if (cmd === '/help' || cmd === '/start@' || cmd === '/help@') {
+    await sendTelegramToChat(fromChatId, 'FiFTO Control', telegramHelpText());
+    return;
+  }
+
+  if (cmd === '/status') {
+    const snap = getAutomationSnapshot();
+    await sendTelegramToChat(fromChatId, 'FiFTO Status', buildScheduleMessage(snap));
+    return;
+  }
+
+  if (cmd === '/start' || cmd === '/resume') {
+    updateAutomation({ enabled: true, state: 'running', pauseUntil: null });
+    setTimeout(() => automationTick().catch(() => {}), 150);
+    const snap = getAutomationSnapshot();
+    logActivity('info', 'Automation started (Telegram)', `Next run: ${snap.nextRunAt ? fmtDateLocal(snap.nextRunAt) : '-'}`);
+    await sendTelegramToChat(fromChatId, '▶️ Automation Started', buildScheduleMessage(snap));
+    return;
+  }
+
+  if (cmd === '/stop') {
+    updateAutomation({ enabled: false, state: 'stopped', pauseUntil: null });
+    const snap = getAutomationSnapshot();
+    logActivity('warn', 'Automation stopped (Telegram)', 'Daily logins disabled');
+    await sendTelegramToChat(fromChatId, '⏹️ Automation Stopped', buildScheduleMessage(snap));
+    return;
+  }
+
+  if (cmd === '/pause') {
+    const days = Math.max(1, Number(words[1] || 1));
+    const pauseUntil = new Date();
+    pauseUntil.setDate(pauseUntil.getDate() + days);
+    updateAutomation({ enabled: true, state: 'paused', pauseUntil: pauseUntil.toISOString() });
+    const snap = getAutomationSnapshot();
+    logActivity('warn', 'Automation paused (Telegram)', `Paused for ${days} day${days === 1 ? '' : 's'} until ${fmtDateLocal(pauseUntil.toISOString())}`);
+    await sendTelegramToChat(fromChatId, '⏸️ Automation Paused', buildScheduleMessage(snap));
+    return;
+  }
+
+  if (cmd === '/run') {
+    const result = await withRunLock('telegram:run-now', async () => {
+      return runSelectedBrokers({
+        headed: false,
+        brokers: automationStore.brokers,
+        source: 'telegram',
+      });
+    });
+    updateAutomation({
+      lastCompletedAt: new Date().toISOString(),
+      lastSummary: result,
+    });
+    await sendTelegramToChat(
+      fromChatId,
+      result.success ? '✅ Run Completed' : '⚠️ Run Completed with Failures',
+      buildBatchMessage(result),
+    );
+    return;
+  }
+
+  if (cmd === '/schedule') {
+    const time = String(words[1] || '').trim();
+    if (!/^\d{2}:\d{2}$/.test(time)) {
+      await sendTelegramToChat(fromChatId, 'Invalid time', 'Use: /schedule HH:MM (example: /schedule 08:45)');
+      return;
+    }
+    const oldRunAt = automationStore.runAt;
+    const runAtChanged = time !== oldRunAt;
+    updateAutomation({
+      runAt: time,
+      ...(runAtChanged ? { lastAttemptDate: null, lastAttemptAt: null } : {}),
+    });
+    const snap = getAutomationSnapshot();
+    logActivity('info', 'Schedule updated (Telegram)', runAtChanged ? `Time: ${oldRunAt} → ${time}` : `Saved (${time})`);
+    tgNotify(
+      '\u{1F4C5} Schedule Updated',
+      (runAtChanged ? `Time changed: ${oldRunAt} \u2192 ${time}\n` : '') + buildScheduleMessage(snap),
+    );
+    await sendTelegramToChat(fromChatId, '📅 Schedule Updated', buildScheduleMessage(snap));
+    return;
+  }
+
+  // Unknown command -> help
+  if (text.startsWith('/')) {
+    await sendTelegramToChat(fromChatId, 'FiFTO Control', telegramHelpText());
+    return;
+  }
+
+  // Not a command: ignore
+  void snapBefore;
+}
+
+async function telegramGetUpdates(offset) {
+  const cfg = getTelegramConfig();
+  const url = `https://api.telegram.org/bot${cfg.botToken}/getUpdates?timeout=0&offset=${offset}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.description || 'getUpdates failed');
+  return data.result || [];
+}
+
+function startTelegramControl() {
+  const cfg = getTelegramConfig();
+  if (!cfg.controlEnabled) return;
+  if (!cfg.botToken || !cfg.chatId) return;
+
+  let offset = 0;
+  let started = false;
+
+  async function tick() {
+    try {
+      const updates = await telegramGetUpdates(offset);
+      if (!started) {
+        // On first tick: skip backlog (mark as seen)
+        const last = updates.length ? updates[updates.length - 1].update_id : null;
+        if (last !== null && last !== undefined) offset = last + 1;
+        started = true;
+        return;
+      }
+
+      for (const u of updates) {
+        offset = Math.max(offset, (u.update_id || 0) + 1);
+        const msg = u.message || u.edited_message;
+        if (!msg) continue;
+        const chatId = msg.chat?.id;
+        const text = msg.text;
+        if (!chatId || !text) continue;
+        if (!isAllowedTelegramChat(chatId)) continue;
+        await handleTelegramCommand(text, chatId);
+      }
+    } catch (_) {
+      // ignore
+    } finally {
+      setTimeout(tick, 2500);
+    }
+  }
+
+  // kick off loop
+  setTimeout(tick, 1500);
 }
 
 function maskValue(val, showStart = 2, showEnd = 2) {
@@ -799,6 +989,8 @@ setTimeout(() => {
     console.error('Initial automation tick failed:', err);
   });
 }, 2000);
+
+startTelegramControl();
 
 app.listen(PORT, () => {
   console.log(`Quantman Login Dashboard: http://localhost:${PORT}`);
