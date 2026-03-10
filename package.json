@@ -1,0 +1,20 @@
+{
+  "name": "quantman-broker-login",
+  "version": "1.0.0",
+  "description": "Automated daily login to Quantman with Flattrade (and Kotak Neo)",
+  "type": "module",
+  "scripts": {
+    "flattrade": "node scripts/flattrade-login.js",
+    "flattrade:headed": "HEADED=1 node scripts/flattrade-login.js",
+    "kotakneo": "node scripts/kotak-neo-login.js",
+    "kotakneo:headed": "HEADED=1 node scripts/kotak-neo-login.js",
+    "start": "node server.js",
+    "web": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "express": "^4.22.1",
+    "otplib": "^13.3.0",
+    "playwright": "^1.40.0"
+  }
+}

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FiFTO - Automation</title>
+  <link rel="icon" href="images/fifto-logo.png" type="image/png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <nav class="topbar">
+      <a href="/" class="topbar__brand">
+        <img src="images/fifto-logo.png" alt="FiFTO" class="topbar__logo">
+      </a>
+      <div class="topbar__nav">
+        <a href="/">Brokers</a>
+        <a href="/automation" class="active">Automation</a>
+        <a href="/status">Status</a>
+        <a href="/settings">Settings</a>
+      </div>
+      <div class="topbar__right">
+        <span class="run-pill" id="topbar-run"><span class="run-pill__dot"></span> Running: <span id="topbar-run-text"></span></span>
+        <button class="bell" id="notif-bell" type="button" aria-label="Notifications">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 7h18s-3 0-3-7"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span class="bell__badge" id="notif-badge"></span>
+        </button>
+        <span class="topbar__time" id="topbar-time" aria-live="off"></span>
+      </div>
+      <div class="notif-panel" id="notif-panel" role="dialog" aria-label="Notifications">
+        <div class="notif-head">
+          <div class="notif-head__title">Notifications</div>
+          <div class="notif-head__actions">
+            <button type="button" class="link-btn" id="notif-mark-all">Mark all read</button>
+            <button type="button" class="link-btn" id="notif-clear">Clear</button>
+          </div>
+        </div>
+        <div class="notif-list" id="notif-list"></div>
+      </div>
+    </nav>
+
+    <div class="alert-banner alert-banner--warn" id="automation-warning" style="display:none">
+      <svg class="alert-banner__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span id="automation-warning-text">Automation is stopped.</span>
+      <button class="alert-banner__btn" id="automation-warning-start" type="button">Start now</button>
+    </div>
+
+    <h1 class="page-title">Daily Automation</h1>
+    <p class="page-desc">Configure the daily schedule, pause for specific days, or stop automation entirely.</p>
+    <div class="page-actions">
+      <button class="btn btn--primary" id="automation-run-now-top" type="button">Run all brokers now</button>
+    </div>
+
+    <div class="section">
+      <div class="grid-4">
+        <div class="stat-card">
+          <div class="stat-card__label">Mode</div>
+          <div class="stat-card__value" id="automation-state">-</div>
+          <div class="stat-card__meta" id="automation-message">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Next run</div>
+          <div class="stat-card__value" id="automation-next-run">-</div>
+          <div class="stat-card__meta">Local machine time</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Pause until</div>
+          <div class="stat-card__value" id="automation-pause-until">-</div>
+          <div class="stat-card__meta">Only while paused</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Current run</div>
+          <div class="stat-card__value" id="automation-current-run">Idle</div>
+          <div class="stat-card__meta" id="automation-last-summary">-</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h2 class="section__title">Schedule</h2>
+        <p class="section__desc">Set the daily run time and which brokers to include.</p>
+        <form id="automation-settings-form" class="form-grid">
+          <div class="field">
+            <label for="automation-runAt">Daily run time</label>
+            <input type="time" id="automation-runAt" name="runAt" required>
+          </div>
+          <div class="check-row">
+            <label><input type="checkbox" id="automation-broker-flattrade"> Flattrade</label>
+            <label><input type="checkbox" id="automation-broker-kotak"> Kotak Neo</label>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary">Save schedule</button>
+            <span class="form-msg" id="automation-settings-msg"></span>
+          </div>
+        </form>
+      </div>
+
+      <div class="card ctrl-card">
+        <h2 class="section__title">Controls</h2>
+
+        <div class="ctrl-group">
+          <span class="ctrl-group__label">Power</span>
+          <div class="ctrl-group__row">
+            <button class="btn btn--primary btn--icon" id="automation-start">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Start / Resume
+            </button>
+            <button class="btn btn--danger btn--icon" id="automation-stop">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+              Stop
+            </button>
+          </div>
+        </div>
+
+        <div class="ctrl-group">
+          <span class="ctrl-group__label">Pause</span>
+          <div class="ctrl-group__row">
+            <button class="btn btn--secondary" id="automation-pause-1">1 day</button>
+            <button class="btn btn--secondary" id="automation-pause-3">3 days</button>
+            <span class="ctrl-sep"></span>
+            <input type="number" min="1" value="7" id="automation-pause-days" class="inline-num" aria-label="Custom pause days">
+            <button class="btn btn--secondary" id="automation-pause-custom">Pause</button>
+          </div>
+        </div>
+
+        <div class="ctrl-group">
+          <span class="ctrl-group__label">Instant</span>
+          <div class="ctrl-group__row">
+            <button class="btn btn--ghost btn--icon" id="automation-run-now">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              Run all brokers now
+            </button>
+          </div>
+        </div>
+
+        <div class="action-msg" id="automation-action-msg"></div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <span>Schedule persists across restarts.</span>
+      <div class="footer__links">
+        <a href="https://www.quantman.trade/" target="_blank">Quantman</a>
+        <span class="footer__dot"></span>
+        <span>Developed by <a href="https://www.instagram.com/maniraja__/?hl=en" target="_blank" class="footer__dev">Mani Raja</a></span>
+      </div>
+    </footer>
+  </div>
+  <script src="js/notify.js"></script>
+  <script src="js/automation.js"></script>
+  <script src="js/time.js"></script>
+</body>
+</html>

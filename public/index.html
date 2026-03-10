@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FiFTO - Brokers</title>
+  <link rel="icon" href="images/fifto-logo.png" type="image/png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <nav class="topbar">
+      <a href="/" class="topbar__brand">
+        <img src="images/fifto-logo.png" alt="FiFTO" class="topbar__logo">
+      </a>
+      <div class="topbar__nav">
+        <a href="/" class="active">Brokers</a>
+        <a href="/automation">Automation</a>
+        <a href="/status">Status</a>
+        <a href="/settings">Settings</a>
+      </div>
+      <div class="topbar__right">
+        <span class="run-pill" id="topbar-run"><span class="run-pill__dot"></span> Running: <span id="topbar-run-text"></span></span>
+        <button class="bell" id="notif-bell" type="button" aria-label="Notifications">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 7h18s-3 0-3-7"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span class="bell__badge" id="notif-badge"></span>
+        </button>
+        <span class="topbar__time" id="topbar-time" aria-live="off"></span>
+      </div>
+      <div class="notif-panel" id="notif-panel" role="dialog" aria-label="Notifications">
+        <div class="notif-head">
+          <div class="notif-head__title">Notifications</div>
+          <div class="notif-head__actions">
+            <button type="button" class="link-btn" id="notif-mark-all">Mark all read</button>
+            <button type="button" class="link-btn" id="notif-clear">Clear</button>
+          </div>
+        </div>
+        <div class="notif-list" id="notif-list"></div>
+      </div>
+    </nav>
+
+    <div class="alert-banner alert-banner--warn" id="automation-warning" style="display:none">
+      <svg class="alert-banner__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span id="automation-warning-text">Automation is stopped. Brokers won't login automatically.</span>
+      <button class="alert-banner__btn" id="automation-warning-start" type="button">Start now</button>
+      <a href="/automation" class="alert-banner__action">Configure</a>
+    </div>
+
+    <h1 class="page-title">Broker Login</h1>
+    <p class="page-desc">Run Flattrade or Kotak Neo login on demand. Daily automation is managed from the Automation page.</p>
+
+    <div class="auto-chips">
+      <div class="auto-chip">
+        <span class="auto-chip__label">Scheduler</span>
+        <span id="automation-mini-state">-</span>
+      </div>
+      <div class="auto-chip">
+        <span class="auto-chip__label">Next run</span>
+        <span id="automation-mini-next">-</span>
+      </div>
+      <a href="/automation" class="auto-chip auto-chip--link">Open Automation</a>
+    </div>
+
+    <div class="grid-2">
+      <article class="card" data-broker="flattrade">
+        <div class="card__header">
+          <span class="card__name">Flattrade</span>
+          <span class="badge" id="flattrade-badge">-</span>
+        </div>
+        <div class="card__sub">Client ID, User ID, Password, OTP/DOB</div>
+        <div class="card__meta" id="flattrade-meta">No run yet.</div>
+        <div class="config-bar">
+          <span class="config-bar__label">Config</span>
+          <span class="config-bar__values" id="flattrade-config-values">Loading...</span>
+          <a href="/settings" class="config-bar__edit" id="flattrade-config-edit">Edit</a>
+        </div>
+        <div class="actions">
+          <button class="btn btn--primary" id="flattrade-login">Run now</button>
+          <button class="btn btn--secondary" id="flattrade-login-headed">Run visible</button>
+        </div>
+        <div class="log-box" id="flattrade-log" aria-live="polite"></div>
+      </article>
+
+      <article class="card" data-broker="kotak">
+        <div class="card__header">
+          <span class="card__name">Kotak Neo</span>
+          <span class="badge" id="kotak-badge">-</span>
+        </div>
+        <div class="card__sub">Mobile, Client ID, TOTP, MPIN</div>
+        <div class="card__meta" id="kotak-meta">No run yet.</div>
+        <div class="config-bar">
+          <span class="config-bar__label">Config</span>
+          <span class="config-bar__values" id="kotak-config-values">Loading...</span>
+          <a href="/settings" class="config-bar__edit" id="kotak-config-edit">Edit</a>
+        </div>
+        <div class="actions">
+          <button class="btn btn--primary" id="kotak-login">Run now</button>
+          <button class="btn btn--secondary" id="kotak-login-headed">Run visible</button>
+        </div>
+        <div class="log-box" id="kotak-log" aria-live="polite"></div>
+      </article>
+    </div>
+
+    <footer class="footer">
+      <span>Keep the server running for daily automation.</span>
+      <div class="footer__links">
+        <a href="https://www.quantman.trade/" target="_blank">Quantman</a>
+        <span class="footer__dot"></span>
+        <span>Developed by <a href="https://www.instagram.com/maniraja__/?hl=en" target="_blank" class="footer__dev">Mani Raja</a></span>
+      </div>
+    </footer>
+  </div>
+  <script src="js/notify.js"></script>
+  <script src="js/brokers.js"></script>
+  <script src="js/time.js"></script>
+</body>
+</html>
