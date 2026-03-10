@@ -47,7 +47,9 @@ body {
   padding: 0;
   margin-bottom: 24px;
   background: var(--card);
-  border: 1px solid var(--border);
+  border: none;
+  border-left: 4px solid var(--green);
+  border-right: 3px solid var(--green);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow: visible;
@@ -116,6 +118,110 @@ body {
   border-radius: var(--radius-sm);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+/* ── DASHBOARD ANALYTICS ───────────────────────────── */
+
+.card__title-sm {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.metric-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.metric-row__label {
+  color: var(--muted);
+}
+
+.metric-row__value {
+  font-weight: 600;
+}
+
+.bar-row {
+  margin: 8px 0 10px;
+}
+
+.bar-row__bar {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: #eef0f4;
+  overflow: hidden;
+}
+
+.bar-row__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.bar-row__fill--success {
+  left: 0;
+  background: var(--green-light);
+}
+
+.bar-row__fill--error {
+  right: 0;
+  background: var(--red-light);
+}
+
+.state-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.state-pill__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--muted);
+  box-shadow: 0 0 0 3px rgba(107,114,128,0.12);
+}
+
+.state-pill--running {
+  border-color: rgba(5,150,105,0.35);
+  background: var(--green-light);
+  color: var(--green);
+}
+.state-pill--running .state-pill__dot {
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(5,150,105,0.18);
+}
+
+.state-pill--paused {
+  border-color: rgba(217,119,6,0.35);
+  background: var(--yellow-light);
+  color: var(--yellow);
+}
+.state-pill--paused .state-pill__dot {
+  background: var(--yellow);
+  box-shadow: 0 0 0 3px rgba(217,119,6,0.16);
+}
+
+.state-pill--stopped {
+  border-color: rgba(220,38,38,0.35);
+  background: var(--red-light);
+  color: var(--red);
+}
+.state-pill--stopped .state-pill__dot {
+  background: var(--red);
+  box-shadow: 0 0 0 3px rgba(220,38,38,0.16);
 }
 
 /* ── RUNNING PILL ───────────────────────────────────── */
