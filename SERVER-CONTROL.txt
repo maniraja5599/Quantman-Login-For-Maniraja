@@ -1,0 +1,65 @@
+FiFTO Server Control (Windows - Local)
+=====================================
+
+Your dashboard runs on:
+  http://localhost:3333
+
+
+1) FIND / CHECK IF SERVER IS RUNNING
+-----------------------------------
+
+A) Check via PM2 (recommended):
+  pm2 status
+
+B) View logs (to confirm it's working):
+  pm2 logs fifto
+
+C) Check which PID is using port 3333:
+  netstat -ano | findstr :3333
+
+
+2) STOP / START SERVER
+----------------------
+
+A) Stop server (safe way):
+  pm2 stop fifto
+
+B) Start server again:
+  cd "C:\Users\manir\Desktop\TEST\Qautnman Login For Maniraja"
+  pm2 start ecosystem.config.cjs
+
+C) Restart server:
+  pm2 restart fifto
+
+D) Remove from PM2 list (stop + delete entry):
+  pm2 delete fifto
+
+E) Stop ALL PM2 apps:
+  pm2 stop all
+
+
+3) DISABLE AUTO-START (DON'T RUN ON PC BOOT)
+-------------------------------------------
+
+This disables PM2 auto-start on next restart:
+  pm2-startup uninstall
+
+If you want it again later:
+  pm2-startup install
+  pm2 save
+
+
+4) EMERGENCY KILL (IF SOMETHING IS STUCK)
+-----------------------------------------
+
+1) Find PID:
+  netstat -ano | findstr :3333
+
+2) Kill PID (replace 12345 with actual PID):
+  taskkill /PID 12345 /F
+
+
+Notes:
+- If you stop PM2 (pm2 stop fifto), automation will NOT run.
+- Automation runs only when your PC is ON at the schedule time (08:45 AM).
+
