@@ -163,13 +163,13 @@ function getTelegramConfig() {
 async function sendTelegram(title, message) {
   const cfg = getTelegramConfig();
   if (!cfg.enabled || !cfg.botToken || !cfg.chatId) return { ok: false, reason: 'not configured or disabled' };
-  const text = `*${escapeMarkdown(title)}*\n${escapeMarkdown(message)}`;
+  const text = `<b>${escapeHtml(title)}</b>\n${escapeHtml(message)}`;
   const url = `https://api.telegram.org/bot${cfg.botToken}/sendMessage`;
   try {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: cfg.chatId, text, parse_mode: 'MarkdownV2' }),
+      body: JSON.stringify({ chat_id: cfg.chatId, text, parse_mode: 'HTML' }),
     });
     const data = await res.json();
     return { ok: data.ok, description: data.description };
@@ -178,8 +178,11 @@ async function sendTelegram(title, message) {
   }
 }
 
-function escapeMarkdown(str) {
-  return String(str || '').replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
+function escapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 function fmtDateLocal(iso) {
@@ -218,48 +221,48 @@ function getBrokerClientId(brokerKey) {
 function buildBrokerLine(brokerKey, result) {
   const name = brokerLabel(brokerKey);
   const clientId = getBrokerClientId(brokerKey);
-  const status = result.success ? 'Success' : 'Failed';
-  const icon = result.success ? '\u2705' : '\u274C';
+  const status = result.success ? '✅ SUCCESS' : '❌ FAILED';
+  const icon = result.success ? '✅' : '❌';
   const lines = [];
-  lines.push(`${icon} \u{1F3E6} ${name}`);
-  lines.push(`   \u{1F194} Client: ${clientId}`);
-  lines.push(`   \u{1F4CB} Status: ${status}`);
-  if (result.error) lines.push(`   \u26A0\uFE0F Error: ${result.error}`);
-  if (result.step && !result.success) lines.push(`   \u{1F527} Step: ${result.step}`);
-  if (result.lastRun) lines.push(`   \u{1F552} Time: ${fmtDateLocal(result.lastRun)}`);
+  lines.push(`${icon} <b>${name}</b>`);
+  lines.push(`   👤 Client: <code>${clientId}</code>`);
+  lines.push(`   📊 Status: ${status}`);
+  if (result.error) lines.push(`   ⚠️ Error: ${result.error}`);
+  if (result.step && !result.success) lines.push(`   🔧 Step: ${result.step}`);
+  if (result.lastRun) lines.push(`   🕒 Time: ${fmtDateLocal(result.lastRun)}`);
   return lines.join('\n');
 }
 
 function buildBatchMessage(summary) {
   const lines = [];
-  const overallIcon = summary.success ? '\u2705' : '\u274C';
-  lines.push(`${overallIcon} Batch: ${summary.success ? 'ALL SUCCESS' : 'HAS FAILURES'}`);
-  lines.push(`\u{1F4E1} Source: ${summary.source || 'manual'}`);
-  lines.push(`\u{1F551} Started: ${fmtDateLocal(summary.startedAt)}`);
-  lines.push(`\u{1F3C1} Completed: ${fmtDateLocal(summary.completedAt)}`);
+  const overallIcon = summary.success ? '✅' : '❌';
+  lines.push(`${overallIcon} <b>Login Report</b>`);
+  lines.push(`📡 Source: ${summary.source || 'manual'}`);
+  lines.push(`🕐 Started: ${fmtDateLocal(summary.startedAt)}`);
+  lines.push(`🏁 Completed: ${fmtDateLocal(summary.completedAt)}`);
   lines.push('');
 
   const brokerKeys = Object.keys(summary.brokers || {});
   if (brokerKeys.length === 0) {
-    lines.push('\u{1F6AB} No brokers were selected.');
+    lines.push('🚫 <i>No brokers were selected.</i>');
   } else {
-    lines.push(`\u{1F4CA} Broker Results (${brokerKeys.length}):`);
-    lines.push('\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
+    lines.push(`<b>Broker Results (${brokerKeys.length}):</b>`);
+    lines.push('━━━━━━━━━━━━━━━━━━━━');
     for (const key of brokerKeys) {
       lines.push('');
       lines.push(buildBrokerLine(key, summary.brokers[key]));
     }
-    lines.push('\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
+    lines.push('━━━━━━━━━━━━━━━━━━━━');
   }
 
   lines.push('');
   const snap = getAutomationSnapshot();
-  lines.push(`\u{1F4C5} Next run: ${snap.nextRunAt ? fmtDateLocal(snap.nextRunAt) : 'Not scheduled'}`);
+  lines.push(`📅 Next run: ${snap.nextRunAt ? fmtDateLocal(snap.nextRunAt) : 'Not scheduled'}`);
   const scheduleLine = snap.runAt2
-    ? `\u23F0 Same day two runs: ${fmtTimeAMPM(snap.runAt)} and ${fmtTimeAMPM(snap.runAt2)}`
-    : `\u23F0 Schedule: ${fmtTimeAMPM(snap.runAt)} daily`;
+    ? `⏰ Two daily runs: ${fmtTimeAMPM(snap.runAt)} & ${fmtTimeAMPM(snap.runAt2)}`
+    : `⏰ Schedule: ${fmtTimeAMPM(snap.runAt)} daily`;
   lines.push(scheduleLine);
-  const modeIcon = snap.state === 'running' ? '\u25B6\uFE0F' : snap.state === 'paused' ? '\u23F8\uFE0F' : '\u23F9\uFE0F';
+  const modeIcon = snap.state === 'running' ? '▶️' : snap.state === 'paused' ? '⏸️' : '⏹️';
   lines.push(`${modeIcon} Mode: ${snap.state === 'running' ? 'Active' : snap.state === 'paused' ? 'Paused' : 'Stopped'}`);
 
   return lines.join('\n');
@@ -267,18 +270,18 @@ function buildBatchMessage(summary) {
 
 function buildScheduleMessage(snap) {
   const enabledBrokers = [];
-  if (snap.brokers?.flattrade) enabledBrokers.push(`\u{1F3E6} Flattrade (${getBrokerClientId('flattrade')})`);
-  if (snap.brokers?.kotakNeo) enabledBrokers.push(`\u{1F3E6} Kotak Neo (${getBrokerClientId('kotakNeo')})`);
-  const modeIcon = snap.state === 'running' ? '\u25B6\uFE0F' : snap.state === 'paused' ? '\u23F8\uFE0F' : '\u23F9\uFE0F';
+  if (snap.brokers?.flattrade) enabledBrokers.push(`🏦 Flattrade (${getBrokerClientId('flattrade')})`);
+  if (snap.brokers?.kotakNeo) enabledBrokers.push(`🏦 Kotak Neo (${getBrokerClientId('kotakNeo')})`);
+  const modeIcon = snap.state === 'running' ? '▶️' : snap.state === 'paused' ? '⏸️' : '⏹️';
   const lines = [];
   const timeLine = snap.runAt2
-    ? `\u23F0 Same day two runs: ${fmtTimeAMPM(snap.runAt)} and ${fmtTimeAMPM(snap.runAt2)}`
-    : `\u23F0 Daily time: ${fmtTimeAMPM(snap.runAt)}`;
+    ? `⏰ Two daily runs: ${fmtTimeAMPM(snap.runAt)} & ${fmtTimeAMPM(snap.runAt2)}`
+    : `⏰ Daily time: ${fmtTimeAMPM(snap.runAt)}`;
   lines.push(timeLine);
-  lines.push(`\u{1F4CB} Brokers: ${enabledBrokers.length ? enabledBrokers.join(', ') : 'None'}`);
+  lines.push(`📋 Brokers: ${enabledBrokers.length ? enabledBrokers.join(', ') : 'None'}`);
   lines.push(`${modeIcon} Mode: ${snap.state === 'running' ? 'Active' : snap.state === 'paused' ? 'Paused' : 'Stopped'}`);
-  lines.push(`\u{1F4C5} Next run: ${snap.nextRunAt ? fmtDateLocal(snap.nextRunAt) : 'Not scheduled'}`);
-  if (snap.pauseUntil) lines.push(`\u23F3 Paused until: ${fmtDateLocal(snap.pauseUntil)}`);
+  lines.push(`📅 Next run: ${snap.nextRunAt ? fmtDateLocal(snap.nextRunAt) : 'Not scheduled'}`);
+  if (snap.pauseUntil) lines.push(`⏳ Paused until: ${fmtDateLocal(snap.pauseUntil)}`);
   return lines.join('\n');
 }
 
@@ -309,13 +312,13 @@ async function sendTelegramPlain(chatId, text) {
 async function sendTelegramToChat(chatId, title, message) {
   const cfg = getTelegramConfig();
   if (!cfg.enabled || !cfg.botToken || !chatId) return { ok: false, reason: 'not configured or disabled' };
-  const text = `*${escapeMarkdown(title)}*\n${escapeMarkdown(message)}`;
+  const text = `<b>${escapeHtml(title)}</b>\n${escapeHtml(message)}`;
   const url = `https://api.telegram.org/bot${cfg.botToken}/sendMessage`;
   try {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'MarkdownV2' }),
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
     });
     const data = await res.json();
     if (data.ok) return { ok: true };
