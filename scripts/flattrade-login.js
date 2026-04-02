@@ -1,9 +1,8 @@
 /**
  * Quantman – Flattrade broker login automation
- * 1. Open Quantman → login with broker → select Flattrade
- * 2. Enter Client ID, click Login
- * 3. In auth popup: fill User ID, Password, OTP/TOTP (DOB), click Log In
- * 4. Return login status
+ * 1. Open Flattrade directly at http://qubit.flattrade.in/
+ * 2. Fill username (name), password (name), and TOTP
+ * 3. Click Login
  */
 
 import 'dotenv/config';
@@ -11,7 +10,7 @@ import { chromium } from 'playwright';
 import { fileURLToPath } from 'url';
 import path from 'path';
 
-const QUANTMAN_URL = 'https://www.quantman.trade/';
+const FLATTRADE_URL = 'http://qubit.flattrade.in/';
 const AUTH_TIMEOUT_MS = 60000;
 const DEFAULT_WAIT_MS = 5000;
 
@@ -29,8 +28,8 @@ function log(msg) {
 export async function runFlattradeLogin(options = {}) {
   const headed = options.headed ?? (process.env.HEADED === '1');
   const clientId = options.clientId ?? getEnv('FLATTRADE_CLIENT_ID');
-  const userId = options.userId ?? getEnv('FLATTRADE_USER_ID');
-  const password = options.password ?? getEnv('FLATTRADE_PASSWORD');
+  const userId = options.userId ?? getEnv('FLATTRADE_USER_ID') ?? 'name';
+  const password = options.password ?? getEnv('FLATTRADE_PASSWORD') ?? 'name';
   const totp = options.totp ?? getEnv('FLATTRADE_TOTP');
 
   const status = { success: false, step: null, error: null };
@@ -49,205 +48,105 @@ export async function runFlattradeLogin(options = {}) {
     const page = await context.newPage();
     page.setDefaultTimeout(AUTH_TIMEOUT_MS);
 
-    // Step 1: Open Quantman
-    status.step = 'open_quantman';
-    log('Opening Quantman...');
-    await page.goto(QUANTMAN_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    // Step 1: Open Flattrade directly
+    status.step = 'open_flattrade';
+    log('Opening Flattrade...');
+    await page.goto(FLATTRADE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForLoadState('networkidle').catch(() => {});
+    await new Promise((r) => setTimeout(r, 2000));
 
-    // Step 2: Click Signup/Login or "Login" to start broker login
+    // Step 2: Fill username (name)
+    status.step = 'fill_username';
+    log('Filling username...');
+    const usernameSelectors = [
+      'input[placeholder*="User" i]',
+      'input[name*="user" i]',
+      'input[name*="username" i]',
+      'input[id*="user" i]',
+      'input[type="text"]',
+    ];
+    let usernameFilled = false;
+    for (const sel of usernameSelectors) {
+      try {
+        const input = page.locator(sel).first();
+        if (await input.isVisible({ timeout: 2000 })) {
+          await input.fill(userId);
+          usernameFilled = true;
+          log('Filled username.');
+          break;
+        }
+      } catch (_) {}
+    }
+    if (!usernameFilled) {
+      const anyInput = page.locator('input[type="text"]').first();
+      if (await anyInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await anyInput.fill(userId);
+        usernameFilled = true;
+      }
+    }
+
+    // Step 3: Fill password (name)
+    status.step = 'fill_password';
+    log('Filling password...');
+    const passwordInput = page.locator('input[type="password"]').first();
+    if (await passwordInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await passwordInput.fill(password);
+      log('Filled password.');
+    }
+
+    // Step 4: Fill TOTP/OTP if available
+    status.step = 'fill_totp';
+    log('Filling TOTP...');
+    const totpSelectors = [
+      'input[placeholder*="OTP" i]',
+      'input[placeholder*="TOTP" i]',
+      'input[name*="otp" i]',
+      'input[name*="totp" i]',
+    ];
+    let totpFilled = false;
+    for (const sel of totpSelectors) {
+      try {
+        const input = page.locator(sel).first();
+        if (await input.isVisible({ timeout: 2000 })) {
+          await input.fill(totp);
+          totpFilled = true;
+          log('Filled TOTP.');
+          break;
+        }
+      } catch (_) {}
+    }
+
+    // Step 5: Click Login button
     status.step = 'click_login';
-    log('Looking for Login / Signup Login...');
+    log('Clicking Login...');
     const loginSelectors = [
-      'a:has-text("Signup / Login")',
-      'a:has-text("Login")',
       'button:has-text("Login")',
-      '[data-testid*="login"]',
-      'a[href*="login"]',
+      'button:has-text("Log In")',
+      'input[type="submit"]',
+      'button[type="submit"]',
     ];
     let loginClicked = false;
     for (const sel of loginSelectors) {
       try {
-        const el = page.locator(sel).first();
-        if (await el.isVisible({ timeout: 2000 })) {
-          await el.click();
+        const btn = page.locator(sel).first();
+        if (await btn.isVisible({ timeout: 2000 })) {
+          await btn.click();
           loginClicked = true;
-          log('Clicked login entry.');
+          log('Clicked Login button.');
           break;
         }
       } catch (_) {}
     }
     if (!loginClicked) {
-      throw new Error('Could not find Login / Signup Login button');
-    }
-    await new Promise((r) => setTimeout(r, 2000));
-
-    // Step 3: Search for Flattrade and select it
-    status.step = 'select_flattrade';
-    log('Searching for Flattrade broker...');
-    const searchSelectors = [
-      'input[placeholder*="search" i]',
-      'input[type="search"]',
-      'input[aria-label*="search" i]',
-      'input',
-    ];
-    let searchFilled = false;
-    for (const sel of searchSelectors) {
-      try {
-        const input = page.locator(sel).first();
-        if (await input.isVisible({ timeout: 2000 })) {
-          await input.fill('flattrade');
-          searchFilled = true;
-          log('Entered "flattrade" in search.');
-          break;
-        }
-      } catch (_) {}
-    }
-    await new Promise((r) => setTimeout(r, 1500));
-
-    // Quantman shows a broker list item first; the Client ID form only appears after selecting it.
-    const flattradeOption = page.locator('#broker-flattrade, [id="broker-flattrade"], .broker-list-view').filter({ has: page.getByText(/flattrade/i) }).first();
-    if (await flattradeOption.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await flattradeOption.click();
-      log('Selected Flattrade broker entry.');
-    } else {
-      throw new Error('Could not find Flattrade in broker list');
-    }
-    await new Promise((r) => setTimeout(r, 2000));
-
-    // Step 4: Client ID (ss-1): fill and click Login
-    status.step = 'client_id_and_login';
-    log('Filling Client ID and clicking Login...');
-    const clientIdSelectors = [
-      '#flattrade-client-id',
-      'input[placeholder*="Client" i]',
-      'label:has-text("Client ID") + input',
-      'input[name*="client" i]',
-      'input[id*="client" i]',
-    ];
-    let clientIdFilled = false;
-    for (const sel of clientIdSelectors) {
-      try {
-        const input = page.locator(sel).first();
-        if (await input.isVisible({ timeout: 2000 })) {
-          await input.fill(clientId);
-          clientIdFilled = true;
-          log('Filled Client ID.');
-          break;
-        }
-      } catch (_) {}
-    }
-    if (!clientIdFilled) {
-      const anyInput = page.locator('input').first();
-      if (await anyInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await anyInput.fill(clientId);
-        clientIdFilled = true;
-      }
+      throw new Error('Could not find Login button');
     }
 
-    // Step 5: Click the Flattrade form Login and wait for auth page.
-    status.step = 'auth_popup';
-    const AUTH_WAIT_MS = 60000;
-    const POLL_MS = 2000;
-    const isAuthUrl = (url) => /auth\.flattrade|flattrade\.in/.test(String(url || ''));
-
-    const clickedFlattradeLogin = await page.evaluate(() => {
-      const selectors = [
-        'button.main-button[form="flattrade-form"]',
-        '#flattrade-form button.main-button',
-        '#flattrade-form button[type="submit"]',
-      ];
-      for (const selector of selectors) {
-        const button = document.querySelector(selector);
-        if (button instanceof HTMLElement) {
-          button.click();
-          return true;
-        }
-      }
-      return false;
-    });
-    if (!clickedFlattradeLogin) {
-      throw new Error('Could not find the Flattrade Login button for #flattrade-form');
-    }
-    log('Clicked Login (Quantman). Waiting for auth page (polling)...');
-
-    let authPage = page;
-    let useIframe = false;
-    const deadline = Date.now() + AUTH_WAIT_MS;
-    while (Date.now() < deadline) {
-      const pages = context.pages();
-      const newPage = pages.find((p) => p !== page && isAuthUrl(p.url()));
-      if (newPage) {
-        authPage = newPage;
-        await authPage.waitForLoadState('domcontentloaded').catch(() => {});
-        log('Auth opened in new tab.');
-        break;
-      }
-      if (isAuthUrl(page.url())) {
-        authPage = page;
-        log('Auth opened in same tab.');
-        break;
-      }
-      const frame = page.frameLocator('iframe[src*="flattrade"]').first();
-      if (await frame.locator('input').first().isVisible({ timeout: 500 }).catch(() => false)) {
-        useIframe = true;
-        log('Auth opened in iframe.');
-        break;
-      }
-      await new Promise((r) => setTimeout(r, POLL_MS));
-    }
-    if (!isAuthUrl(authPage.url()) && !useIframe) {
-      const hasNew = context.pages().some((p) => p !== page && isAuthUrl(p.url()));
-      if (!hasNew) {
-        status.error = 'Auth page did not open in 60s. Use "Login (visible)" to see the flow, or check Quantman/Flattrade.';
-        log(`Error: ${status.error}`);
-        return status;
-      }
-    }
-    await new Promise((r) => setTimeout(r, 2000));
-
-    let authForm = authPage;
-    const authFrame = authPage.frameLocator('iframe[src*="flattrade"]').first();
-    if (useIframe || (await authPage.locator('iframe[src*="flattrade"]').first().isVisible({ timeout: 2000 }).catch(() => false))) {
-      authForm = authFrame;
-    }
-    const isAuthPage = isAuthUrl(authPage.url()) || await authForm.locator('text=Log In').isVisible({ timeout: 5000 }).catch(() => false);
-    if (!isAuthPage) {
-      throw new Error('Auth page did not load (expected Flattrade Log In form)');
-    }
-    log('Auth page opened.');
-
-    // Fill User ID, Password, OTP/TOTP on auth page (or inside iframe)
-    const userInput = authForm.locator('input[placeholder*="User" i], input[name*="user" i], label:has-text("User ID") + input, input').first();
-    await userInput.fill(userId);
-
-    const passwordInputs = await authForm.locator('input[type="password"]').all();
-    if (passwordInputs.length >= 1) {
-      await passwordInputs[0].fill(password);
-    }
-    if (passwordInputs.length >= 2) {
-      await passwordInputs[1].fill(totp);
-    } else {
-      const totpInput = authForm.locator('input[placeholder*="OTP" i], input[placeholder*="TOTP" i], input[name*="otp" i]').first();
-      if (await totpInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await totpInput.fill(totp);
-      }
-    }
-    log('Filled User ID, Password, OTP/TOTP.');
-
-    const authLoginBtn = authForm.locator('button:has-text("Log In"), input[type="submit"][value*="Log" i]').first();
-    await authLoginBtn.click();
-    log('Clicked Log In on Flattrade auth.');
-
-    // Wait for redirect/success (auth window may close or redirect)
+    // Wait for redirect/success
     await new Promise((r) => setTimeout(r, 5000));
-    const authUrl = authPage.url();
-    const hasError = await authForm.getByText(/invalid|error|failed|incorrect/i).isVisible({ timeout: 3000 }).catch(() => false);
+    const authUrl = page.url();
+    const hasError = await page.getByText(/invalid|error|failed|incorrect/i).isVisible({ timeout: 3000 }).catch(() => false);
     if (hasError) {
-      throw new Error('Flattrade auth showed an error message');
-    }
-    if (authUrl.includes('auth.flattrade') && !authUrl.includes('callback') && !authUrl.includes('success')) {
-      await new Promise((r) => setTimeout(r, 5000));
+      throw new Error('Flattrade login showed an error message');
     }
 
     status.step = 'done';

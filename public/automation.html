@@ -14,6 +14,7 @@
         <img src="images/fifto-logo.png" alt="FiFTO" class="topbar__logo">
       </a>
       <div class="topbar__nav">
+        <a href="/dashboard">Dashboard</a>
         <a href="/">Brokers</a>
         <a href="/automation" class="active">Automation</a>
         <a href="/status">Status</a>
@@ -85,8 +86,12 @@
         <p class="section__desc">Set the daily run time and which brokers to include.</p>
         <form id="automation-settings-form" class="form-grid">
           <div class="field">
-            <label for="automation-runAt">Daily run time</label>
+            <label for="automation-runAt">First run time</label>
             <input type="time" id="automation-runAt" name="runAt" required>
+          </div>
+          <div class="field">
+            <label for="automation-runAt2">Second run time (optional – same day)</label>
+            <input type="time" id="automation-runAt2" name="runAt2" placeholder="Leave empty for one run/day">
           </div>
           <div class="check-row">
             <label><input type="checkbox" id="automation-broker-flattrade"> Flattrade</label>

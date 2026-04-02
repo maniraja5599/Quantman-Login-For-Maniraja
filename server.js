@@ -1,7 +1,7 @@
 /**
  * FiFTO broker login dashboard + daily automation
  */
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -9,6 +9,8 @@ import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Load .env from project folder so it works when PM2 is run from any directory
+dotenv.config({ path: path.join(__dirname, '.env') });
 const app = express();
 const PORT = process.env.PORT || 3333;
 const LOGIN_TIMEOUT_MS = 120000;
@@ -77,35 +79,48 @@ function defaultAutomationState() {
     enabled: false,
     state: 'stopped',
     runAt: '09:15',
+    runAt2: null,
     brokers: {
       flattrade: true,
       kotakNeo: true,
     },
     pauseUntil: null,
     lastAttemptDate: null,
+    lastAttemptDate2: null,
     lastAttemptAt: null,
     lastCompletedAt: null,
     lastSummary: null,
+    lastScheduleChangeAt: null,
   };
 }
 
 function normalizeAutomationState(raw = {}) {
   const base = defaultAutomationState();
+  const runAt2Raw = raw.runAt2;
+  const runAt2 =
+    runAt2Raw === null || runAt2Raw === undefined || runAt2Raw === ''
+      ? null
+      : /^\d{2}:\d{2}$/.test(String(runAt2Raw))
+        ? String(runAt2Raw)
+        : null;
   return {
     ...base,
     ...raw,
     enabled: raw.enabled ?? base.enabled,
     state: ['running', 'paused', 'stopped'].includes(raw.state) ? raw.state : base.state,
     runAt: /^\d{2}:\d{2}$/.test(String(raw.runAt || '')) ? String(raw.runAt) : base.runAt,
+    runAt2,
     brokers: {
       flattrade: raw.brokers?.flattrade ?? base.brokers.flattrade,
       kotakNeo: raw.brokers?.kotakNeo ?? base.brokers.kotakNeo,
     },
     pauseUntil: raw.pauseUntil || null,
     lastAttemptDate: raw.lastAttemptDate || null,
+    lastAttemptDate2: raw.lastAttemptDate2 ?? null,
     lastAttemptAt: raw.lastAttemptAt || null,
     lastCompletedAt: raw.lastCompletedAt || null,
     lastSummary: raw.lastSummary || null,
+    lastScheduleChangeAt: raw.lastScheduleChangeAt || null,
   };
 }
 
@@ -178,6 +193,18 @@ function fmtDateLocal(iso) {
   return `${dd}-${mm}-${yyyy}, ${pad(h)}:${pad(d.getMinutes())}:${pad(d.getSeconds())} ${ampm}`;
 }
 
+/** Convert "HH:MM" (24h) to "hh:MM AM/PM" for Telegram. */
+function fmtTimeAMPM(timeStr) {
+  if (!timeStr || typeof timeStr !== 'string') return timeStr || '-';
+  const [hh, mm] = timeStr.trim().split(':').map(Number);
+  if (isNaN(hh)) return timeStr;
+  const m = isNaN(mm) ? 0 : mm;
+  const ampm = hh >= 12 ? 'PM' : 'AM';
+  const h12 = hh % 12 || 12;
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(h12)}:${pad(m)} ${ampm}`;
+}
+
 function brokerLabel(key) {
   return key === 'flattrade' ? 'Flattrade' : key === 'kotakNeo' ? 'Kotak Neo' : key;
 }
@@ -228,7 +255,10 @@ function buildBatchMessage(summary) {
   lines.push('');
   const snap = getAutomationSnapshot();
   lines.push(`\u{1F4C5} Next run: ${snap.nextRunAt ? fmtDateLocal(snap.nextRunAt) : 'Not scheduled'}`);
-  lines.push(`\u23F0 Schedule: ${snap.runAt} daily`);
+  const scheduleLine = snap.runAt2
+    ? `\u23F0 Same day two runs: ${fmtTimeAMPM(snap.runAt)} and ${fmtTimeAMPM(snap.runAt2)}`
+    : `\u23F0 Schedule: ${fmtTimeAMPM(snap.runAt)} daily`;
+  lines.push(scheduleLine);
   const modeIcon = snap.state === 'running' ? '\u25B6\uFE0F' : snap.state === 'paused' ? '\u23F8\uFE0F' : '\u23F9\uFE0F';
   lines.push(`${modeIcon} Mode: ${snap.state === 'running' ? 'Active' : snap.state === 'paused' ? 'Paused' : 'Stopped'}`);
 
@@ -241,7 +271,10 @@ function buildScheduleMessage(snap) {
   if (snap.brokers?.kotakNeo) enabledBrokers.push(`\u{1F3E6} Kotak Neo (${getBrokerClientId('kotakNeo')})`);
   const modeIcon = snap.state === 'running' ? '\u25B6\uFE0F' : snap.state === 'paused' ? '\u23F8\uFE0F' : '\u23F9\uFE0F';
   const lines = [];
-  lines.push(`\u23F0 Daily time: ${snap.runAt}`);
+  const timeLine = snap.runAt2
+    ? `\u23F0 Same day two runs: ${fmtTimeAMPM(snap.runAt)} and ${fmtTimeAMPM(snap.runAt2)}`
+    : `\u23F0 Daily time: ${fmtTimeAMPM(snap.runAt)}`;
+  lines.push(timeLine);
   lines.push(`\u{1F4CB} Brokers: ${enabledBrokers.length ? enabledBrokers.join(', ') : 'None'}`);
   lines.push(`${modeIcon} Mode: ${snap.state === 'running' ? 'Active' : snap.state === 'paused' ? 'Paused' : 'Stopped'}`);
   lines.push(`\u{1F4C5} Next run: ${snap.nextRunAt ? fmtDateLocal(snap.nextRunAt) : 'Not scheduled'}`);
@@ -255,6 +288,24 @@ function tgNotify(title, message) {
 
 /* ── Telegram Control (remote commands) ───────────────── */
 
+/** Send plain text to a chat (no Markdown) – use for command replies so they never fail. */
+async function sendTelegramPlain(chatId, text) {
+  const cfg = getTelegramConfig();
+  if (!cfg.botToken || !chatId) return { ok: false, reason: 'not configured' };
+  const url = `https://api.telegram.org/bot${cfg.botToken}/sendMessage`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: String(text || '').slice(0, 4096) }),
+    });
+    const data = await res.json();
+    return { ok: data.ok, description: data.description };
+  } catch (err) {
+    return { ok: false, reason: err.message };
+  }
+}
+
 async function sendTelegramToChat(chatId, title, message) {
   const cfg = getTelegramConfig();
   if (!cfg.enabled || !cfg.botToken || !chatId) return { ok: false, reason: 'not configured or disabled' };
@@ -267,9 +318,12 @@ async function sendTelegramToChat(chatId, title, message) {
       body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'MarkdownV2' }),
     });
     const data = await res.json();
-    return { ok: data.ok, description: data.description };
+    if (data.ok) return { ok: true };
+    const fallback = `${title}\n\n${message}`.slice(0, 4096);
+    return sendTelegramPlain(chatId, fallback);
   } catch (err) {
-    return { ok: false, reason: err.message };
+    const fallback = `${title}\n\n${message}`.slice(0, 4096);
+    return sendTelegramPlain(chatId, fallback);
   }
 }
 
@@ -277,11 +331,12 @@ function telegramHelpText() {
   return [
     'Commands:',
     '/status  - show automation state',
-    '/start   - start/resume automation',
+    '/resume  - start or resume daily automation',
     '/stop    - stop automation',
-    '/pause 1 - pause for N days (example: /pause 3)',
-    '/run     - run all selected brokers now',
-    '/schedule HH:MM - change daily time (example: /schedule 08:45)',
+    '/pause N - pause for N days (e.g. /pause 3)',
+    '/run     - run all brokers now',
+    '/schedule HH:MM [HH:MM] - 1 or 2 times/day (e.g. /schedule 08:45 or /schedule 09:15 15:30)',
+    '/help    - this message',
   ].join('\n');
 }
 
@@ -290,31 +345,36 @@ function isAllowedTelegramChat(chatId) {
   return String(chatId) === String(cfg.chatId);
 }
 
+/** Reply to user with plain text so it always works (no Markdown errors). */
+async function replyPlain(chatId, title, body) {
+  const full = `${title}\n\n${body}`.slice(0, 4096);
+  await sendTelegramPlain(chatId, full);
+}
+
 async function handleTelegramCommand(textRaw, fromChatId) {
   const text = String(textRaw || '').trim();
   if (!text) return;
 
-  const snapBefore = getAutomationSnapshot();
   const words = text.split(/\s+/);
-  const cmd = String(words[0] || '').toLowerCase();
+  const cmd = String(words[0] || '').toLowerCase().replace(/@\w+$/, '');
 
-  if (cmd === '/help' || cmd === '/start@' || cmd === '/help@') {
-    await sendTelegramToChat(fromChatId, 'FiFTO Control', telegramHelpText());
+  if (cmd === '/help' || cmd === '/start' || cmd === '/start@' || cmd === '/help@') {
+    await replyPlain(fromChatId, 'FiFTO Control', telegramHelpText());
     return;
   }
 
   if (cmd === '/status') {
     const snap = getAutomationSnapshot();
-    await sendTelegramToChat(fromChatId, 'FiFTO Status', buildScheduleMessage(snap));
+    await replyPlain(fromChatId, 'FiFTO Status', buildScheduleMessage(snap));
     return;
   }
 
-  if (cmd === '/start' || cmd === '/resume') {
+  if (cmd === '/resume') {
     updateAutomation({ enabled: true, state: 'running', pauseUntil: null });
     setTimeout(() => automationTick().catch(() => {}), 150);
     const snap = getAutomationSnapshot();
     logActivity('info', 'Automation started (Telegram)', `Next run: ${snap.nextRunAt ? fmtDateLocal(snap.nextRunAt) : '-'}`);
-    await sendTelegramToChat(fromChatId, '▶️ Automation Started', buildScheduleMessage(snap));
+    await replyPlain(fromChatId, 'Automation Started', buildScheduleMessage(snap));
     return;
   }
 
@@ -322,7 +382,7 @@ async function handleTelegramCommand(textRaw, fromChatId) {
     updateAutomation({ enabled: false, state: 'stopped', pauseUntil: null });
     const snap = getAutomationSnapshot();
     logActivity('warn', 'Automation stopped (Telegram)', 'Daily logins disabled');
-    await sendTelegramToChat(fromChatId, '⏹️ Automation Stopped', buildScheduleMessage(snap));
+    await replyPlain(fromChatId, 'Automation Stopped', buildScheduleMessage(snap));
     return;
   }
 
@@ -333,7 +393,7 @@ async function handleTelegramCommand(textRaw, fromChatId) {
     updateAutomation({ enabled: true, state: 'paused', pauseUntil: pauseUntil.toISOString() });
     const snap = getAutomationSnapshot();
     logActivity('warn', 'Automation paused (Telegram)', `Paused for ${days} day${days === 1 ? '' : 's'} until ${fmtDateLocal(pauseUntil.toISOString())}`);
-    await sendTelegramToChat(fromChatId, '⏸️ Automation Paused', buildScheduleMessage(snap));
+    await replyPlain(fromChatId, 'Automation Paused', buildScheduleMessage(snap));
     return;
   }
 
@@ -349,9 +409,9 @@ async function handleTelegramCommand(textRaw, fromChatId) {
       lastCompletedAt: new Date().toISOString(),
       lastSummary: result,
     });
-    await sendTelegramToChat(
+    await replyPlain(
       fromChatId,
-      result.success ? '✅ Run Completed' : '⚠️ Run Completed with Failures',
+      result.success ? 'Run Completed' : 'Run Completed with Failures',
       buildBatchMessage(result),
     );
     return;
@@ -360,33 +420,47 @@ async function handleTelegramCommand(textRaw, fromChatId) {
   if (cmd === '/schedule') {
     const time = String(words[1] || '').trim();
     if (!/^\d{2}:\d{2}$/.test(time)) {
-      await sendTelegramToChat(fromChatId, 'Invalid time', 'Use: /schedule HH:MM (example: /schedule 08:45)');
+      await replyPlain(
+        fromChatId,
+        'Invalid time',
+        'Use: /schedule HH:MM or /schedule HH:MM HH:MM (e.g. /schedule 08:45 or /schedule 09:15 15:30)',
+      );
       return;
     }
+    const time2Raw = String(words[2] || '').trim();
+    const time2 = time2Raw && /^\d{2}:\d{2}$/.test(time2Raw) ? time2Raw : null;
     const oldRunAt = automationStore.runAt;
-    const runAtChanged = time !== oldRunAt;
-    updateAutomation({
-      runAt: time,
-      ...(runAtChanged ? { lastAttemptDate: null, lastAttemptAt: null } : {}),
-    });
+    const oldRunAt2 = automationStore.runAt2;
+    const runAt1Changed = time !== oldRunAt;
+    const runAt2Changed = time2 !== oldRunAt2;
+    const patch = { runAt: time, runAt2: time2 };
+    if (runAt1Changed) {
+      patch.lastAttemptDate = null;
+      patch.lastAttemptAt = null;
+      patch.lastScheduleChangeAt = new Date().toISOString();
+    }
+    if (runAt2Changed) {
+      patch.lastAttemptDate2 = null;
+      if (!patch.lastScheduleChangeAt) patch.lastScheduleChangeAt = new Date().toISOString();
+    }
+    updateAutomation(patch);
     const snap = getAutomationSnapshot();
-    logActivity('info', 'Schedule updated (Telegram)', runAtChanged ? `Time: ${oldRunAt} → ${time}` : `Saved (${time})`);
-    tgNotify(
-      '\u{1F4C5} Schedule Updated',
-      (runAtChanged ? `Time changed: ${oldRunAt} \u2192 ${time}\n` : '') + buildScheduleMessage(snap),
-    );
-    await sendTelegramToChat(fromChatId, '📅 Schedule Updated', buildScheduleMessage(snap));
+    const msg =
+      runAt1Changed || runAt2Changed
+        ? [runAt1Changed && `Time 1: ${fmtTimeAMPM(oldRunAt)} → ${fmtTimeAMPM(time)}`, runAt2Changed && `Time 2: ${oldRunAt2 ? fmtTimeAMPM(oldRunAt2) : 'none'} → ${time2 ? fmtTimeAMPM(time2) : 'none'}`]
+            .filter(Boolean)
+            .join('; ')
+        : `Saved`;
+    logActivity('info', 'Schedule updated (Telegram)', msg);
+    tgNotify('\u{1F4C5} Schedule Updated', (runAt1Changed || runAt2Changed ? msg + '\n' : '') + buildScheduleMessage(snap));
+    await replyPlain(fromChatId, 'Schedule Updated', buildScheduleMessage(snap));
     return;
   }
 
-  // Unknown command -> help
   if (text.startsWith('/')) {
-    await sendTelegramToChat(fromChatId, 'FiFTO Control', telegramHelpText());
+    await replyPlain(fromChatId, 'FiFTO Control', telegramHelpText());
     return;
   }
-
-  // Not a command: ignore
-  void snapBefore;
 }
 
 async function telegramGetUpdates(offset) {
@@ -400,8 +474,14 @@ async function telegramGetUpdates(offset) {
 
 function startTelegramControl() {
   const cfg = getTelegramConfig();
-  if (!cfg.controlEnabled) return;
-  if (!cfg.botToken || !cfg.chatId) return;
+  if (!cfg.controlEnabled) {
+    return;
+  }
+  if (!cfg.botToken || !cfg.chatId) {
+    console.log('[Telegram control] Skipped: bot token or chat ID not set.');
+    return;
+  }
+  console.log('[Telegram control] Enabled. Commands: /status /run /stop /resume /pause /schedule /help');
 
   let offset = 0;
   let started = false;
@@ -424,11 +504,18 @@ function startTelegramControl() {
         const chatId = msg.chat?.id;
         const text = msg.text;
         if (!chatId || !text) continue;
-        if (!isAllowedTelegramChat(chatId)) continue;
-        await handleTelegramCommand(text, chatId);
+        if (!isAllowedTelegramChat(chatId)) {
+          await sendTelegramPlain(chatId, 'Only the configured chat can control this bot. Use the chat ID set in Settings.');
+          continue;
+        }
+        try {
+          await handleTelegramCommand(text, chatId);
+        } catch (err) {
+          await sendTelegramPlain(chatId, 'Error: ' + (err.message || String(err)).slice(0, 500));
+        }
       }
-    } catch (_) {
-      // ignore
+    } catch (err) {
+      console.error('[Telegram control] poll error:', err.message);
     } finally {
       setTimeout(tick, 2500);
     }
@@ -699,14 +786,25 @@ function computeNextRunAt(now = new Date()) {
   }
 
   const todayKey = getLocalDateKey(now);
-  const scheduled = getScheduledDate(now, automationStore.runAt);
+  const candidates = [];
 
-  if (automationStore.lastAttemptDate !== todayKey && now.getTime() < scheduled.getTime()) {
-    return scheduled.toISOString();
-  }
+  const addSlot = (runAt, lastAttemptDate) => {
+    if (!runAt) return;
+    const scheduled = getScheduledDate(now, runAt);
+    if (lastAttemptDate !== todayKey && scheduled.getTime() > now.getTime()) {
+      candidates.push(scheduled.getTime());
+    }
+    const tomorrow = new Date(scheduled);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    candidates.push(tomorrow.getTime());
+  };
 
-  scheduled.setDate(scheduled.getDate() + 1);
-  return scheduled.toISOString();
+  addSlot(automationStore.runAt, automationStore.lastAttemptDate);
+  addSlot(automationStore.runAt2, automationStore.lastAttemptDate2);
+
+  if (candidates.length === 0) return null;
+  const next = Math.min(...candidates.filter((t) => t > now.getTime()));
+  return isFinite(next) ? new Date(next).toISOString() : null;
 }
 
 function getAutomationSnapshot() {
@@ -719,6 +817,13 @@ function getAutomationSnapshot() {
   };
 }
 
+function shouldSkipSlotDueToScheduleChange(now, todayKey, scheduledTime) {
+  if (!automationStore.lastScheduleChangeAt) return false;
+  const changedAt = new Date(automationStore.lastScheduleChangeAt);
+  const changedKey = getLocalDateKey(changedAt);
+  return changedKey === todayKey && now.getTime() > scheduledTime.getTime();
+}
+
 async function automationTick() {
   maybeResumeExpiredPause();
 
@@ -727,16 +832,28 @@ async function automationTick() {
   if (!automationStore.brokers.flattrade && !automationStore.brokers.kotakNeo) return;
 
   const now = new Date();
-  const scheduled = getScheduledDate(now, automationStore.runAt);
   const todayKey = getLocalDateKey(now);
 
-  if (now.getTime() < scheduled.getTime()) return;
-  if (automationStore.lastAttemptDate === todayKey) return;
+  const runSlot1 = () => {
+    const scheduled = getScheduledDate(now, automationStore.runAt);
+    if (now.getTime() < scheduled.getTime()) return false;
+    if (automationStore.lastAttemptDate === todayKey) return false;
+    if (shouldSkipSlotDueToScheduleChange(now, todayKey, scheduled)) return false;
+    updateAutomation({ lastAttemptDate: todayKey, lastAttemptAt: now.toISOString() });
+    return true;
+  };
 
-  updateAutomation({
-    lastAttemptDate: todayKey,
-    lastAttemptAt: now.toISOString(),
-  });
+  const runSlot2 = () => {
+    if (!automationStore.runAt2) return false;
+    const scheduled = getScheduledDate(now, automationStore.runAt2);
+    if (now.getTime() < scheduled.getTime()) return false;
+    if (automationStore.lastAttemptDate2 === todayKey) return false;
+    if (shouldSkipSlotDueToScheduleChange(now, todayKey, scheduled)) return false;
+    updateAutomation({ lastAttemptDate2: todayKey, lastAttemptAt: now.toISOString() });
+    return true;
+  };
+
+  if (!runSlot1() && !runSlot2()) return;
 
   const summary = await withRunLock('automation', async () => {
     return runSelectedBrokers({
@@ -839,16 +956,18 @@ app.get('/api/credentials/telegram', (req, res) => {
     botToken: cfg.botToken ? maskValue(cfg.botToken, 4, 4) : '',
     chatId: cfg.chatId ? maskValue(String(cfg.chatId), 3, 3) : '',
     enabled: cfg.enabled,
+    controlEnabled: !!cfg.controlEnabled,
   });
 });
 
 app.put('/api/credentials/telegram', (req, res) => {
-  const { botToken, chatId, enabled } = req.body || {};
+  const { botToken, chatId, enabled, controlEnabled } = req.body || {};
   const creds = loadCredentials();
   creds.telegram = creds.telegram || {};
   if (botToken !== undefined) creds.telegram.botToken = String(botToken).trim();
   if (chatId !== undefined) creds.telegram.chatId = String(chatId).trim();
   if (enabled !== undefined) creds.telegram.enabled = enabled === true;
+  if (controlEnabled !== undefined) creds.telegram.controlEnabled = !!controlEnabled;
   saveCredentials(creds);
   res.json({ ok: true, message: 'Telegram settings updated' });
 });
@@ -875,6 +994,13 @@ app.get('/api/automation', (req, res) => {
 
 app.put('/api/automation', (req, res) => {
   const runAt = typeof req.body?.runAt === 'string' ? req.body.runAt.trim() : automationStore.runAt;
+  const runAt2Raw = req.body?.runAt2;
+  const runAt2 =
+    runAt2Raw === null || runAt2Raw === undefined || runAt2Raw === ''
+      ? null
+      : /^\d{2}:\d{2}$/.test(String(runAt2Raw).trim())
+        ? String(runAt2Raw).trim()
+        : automationStore.runAt2;
   const brokers = {
     flattrade: req.body?.brokers?.flattrade !== undefined ? req.body.brokers.flattrade === true : automationStore.brokers.flattrade,
     kotakNeo: req.body?.brokers?.kotakNeo !== undefined ? req.body.brokers.kotakNeo === true : automationStore.brokers.kotakNeo,
@@ -883,22 +1009,36 @@ app.put('/api/automation', (req, res) => {
   if (!/^\d{2}:\d{2}$/.test(runAt)) {
     return res.status(400).json({
       ok: false,
-      error: 'Time must be in HH:MM format.',
+      error: 'First time must be in HH:MM format.',
     });
   }
 
   const oldRunAt = automationStore.runAt;
-  const runAtChanged = runAt !== oldRunAt;
-  updateAutomation({
-    runAt,
-    brokers,
-    ...(runAtChanged ? { lastAttemptDate: null, lastAttemptAt: null } : {}),
-  });
+  const oldRunAt2 = automationStore.runAt2;
+  const runAt1Changed = runAt !== oldRunAt;
+  const runAt2Changed = runAt2 !== oldRunAt2;
+  const patch = { runAt, runAt2, brokers };
+  if (runAt1Changed) {
+    patch.lastAttemptDate = null;
+    patch.lastAttemptAt = null;
+    patch.lastScheduleChangeAt = new Date().toISOString();
+  }
+  if (runAt2Changed) {
+    patch.lastAttemptDate2 = null;
+    if (!patch.lastScheduleChangeAt) patch.lastScheduleChangeAt = new Date().toISOString();
+  }
+  updateAutomation(patch);
   const snap = getAutomationSnapshot();
-  logActivity('info', 'Schedule updated', runAtChanged ? `Time: ${oldRunAt} → ${runAt}` : `Saved (${runAt})`);
+  const msg =
+    runAt1Changed || runAt2Changed
+      ? [runAt1Changed && `Time 1: ${fmtTimeAMPM(oldRunAt)} → ${fmtTimeAMPM(runAt)}`, runAt2Changed && `Time 2: ${oldRunAt2 ? fmtTimeAMPM(oldRunAt2) : 'none'} → ${runAt2 ? fmtTimeAMPM(runAt2) : 'none'}`]
+          .filter(Boolean)
+          .join('; ')
+      : `Saved (${fmtTimeAMPM(runAt)}${runAt2 ? ', ' + fmtTimeAMPM(runAt2) : ''})`;
+  logActivity('info', 'Schedule updated', msg);
   tgNotify(
     '\u{1F4C5} Schedule Updated',
-    (runAtChanged ? `Time changed: ${oldRunAt} \u2192 ${runAt}\n` : '') + buildScheduleMessage(snap),
+    (runAt1Changed || runAt2Changed ? msg + '\n' : '') + buildScheduleMessage(snap),
   );
   return res.json({
     ok: true,
@@ -972,6 +1112,10 @@ app.get('/status', (req, res) => {
 
 app.get('/automation', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'automation.html'));
+});
+
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
 app.get('*', (req, res) => {

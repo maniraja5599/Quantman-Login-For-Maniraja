@@ -101,6 +101,7 @@ async function initTelegram() {
     if (el('tg-bot-token')) el('tg-bot-token').placeholder = data.botToken || 'e.g. 123456:ABC...';
     if (el('tg-chat-id')) el('tg-chat-id').placeholder = data.chatId || 'e.g. -1001234567890';
     if (el('tg-enabled')) el('tg-enabled').checked = data.enabled !== false;
+    if (el('tg-control-enabled')) el('tg-control-enabled').checked = !!data.controlEnabled;
   } catch (_) {}
 
   form.addEventListener('submit', async (e) => {
@@ -112,6 +113,7 @@ async function initTelegram() {
     if (token) payload.botToken = token;
     if (chatId) payload.chatId = chatId;
     payload.enabled = !!el('tg-enabled')?.checked;
+    payload.controlEnabled = !!el('tg-control-enabled')?.checked;
 
     try {
       await fetchJson(`${API}/credentials/telegram`, {
@@ -122,6 +124,8 @@ async function initTelegram() {
       const latest = await fetchJson(`${API}/credentials/telegram`);
       if (el('tg-bot-token')) { el('tg-bot-token').placeholder = latest.botToken || ''; el('tg-bot-token').value = ''; }
       if (el('tg-chat-id')) { el('tg-chat-id').placeholder = latest.chatId || ''; el('tg-chat-id').value = ''; }
+      if (el('tg-enabled')) el('tg-enabled').checked = latest.enabled !== false;
+      if (el('tg-control-enabled')) el('tg-control-enabled').checked = !!latest.controlEnabled;
       if (msg) msg.textContent = 'Telegram settings saved.';
     } catch (err) {
       if (msg) { msg.textContent = err.message || 'Save failed.'; msg.className = 'form-msg form-msg--error'; }

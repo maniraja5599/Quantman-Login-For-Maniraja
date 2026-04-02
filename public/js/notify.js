@@ -255,6 +255,12 @@
 
     if (bell) bell.addEventListener('click', function (e) {
       e.stopPropagation();
+      // When opening the panel, mark everything as read so badge clears instantly
+      var panelWasOpen = panel && panel.classList.contains('notif-panel--show');
+      if (!panelWasOpen) {
+        state.items.forEach(function (n) { n.read = true; });
+        persistAndRender();
+      }
       togglePanel();
     });
 

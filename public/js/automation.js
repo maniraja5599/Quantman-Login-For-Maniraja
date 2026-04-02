@@ -33,9 +33,12 @@ function render(d) {
   if (s) s.textContent = d.isRunning ? 'Running now' : d.state === 'running' ? 'Active' : d.state === 'paused' ? 'Paused' : 'Stopped';
 
   const m = el('automation-message');
-  if (m) m.textContent = d.enabled
-    ? `${d.runAt} | ${d.brokers.flattrade ? 'Flattrade ' : ''}${d.brokers.kotakNeo ? 'Kotak Neo' : ''}`.trim()
-    : 'Disabled';
+  if (m) {
+    const times = d.runAt2 ? `${d.runAt}, ${d.runAt2}` : d.runAt;
+    m.textContent = d.enabled
+      ? `${times} | ${d.brokers.flattrade ? 'Flattrade ' : ''}${d.brokers.kotakNeo ? 'Kotak Neo' : ''}`.trim()
+      : 'Disabled';
+  }
 
   if (el('automation-next-run')) el('automation-next-run').textContent = d.nextRunAt ? fmtDate(d.nextRunAt) : '-';
   if (el('automation-pause-until')) el('automation-pause-until').textContent = d.pauseUntil ? fmtDate(d.pauseUntil) : '-';
@@ -47,6 +50,7 @@ function render(d) {
   const formHasFocus = formEl && formEl.contains(document.activeElement);
   if (!formHasFocus) {
     if (el('automation-runAt')) el('automation-runAt').value = d.runAt || '09:15';
+    if (el('automation-runAt2')) el('automation-runAt2').value = d.runAt2 || '';
     if (el('automation-broker-flattrade')) el('automation-broker-flattrade').checked = !!d.brokers?.flattrade;
     if (el('automation-broker-kotak')) el('automation-broker-kotak').checked = !!d.brokers?.kotakNeo;
   }
@@ -88,10 +92,12 @@ function init() {
   if (form) form.addEventListener('submit', async (e) => {
     e.preventDefault();
     try {
+      const runAt2Val = el('automation-runAt2')?.value?.trim();
       const r = await fetchJson(`${API}/automation`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           runAt: el('automation-runAt')?.value || '09:15',
+          runAt2: runAt2Val || null,
           brokers: { flattrade: !!el('automation-broker-flattrade')?.checked, kotakNeo: !!el('automation-broker-kotak')?.checked },
         }),
       });

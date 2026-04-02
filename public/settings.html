@@ -14,6 +14,7 @@
         <img src="images/fifto-logo.png" alt="FiFTO" class="topbar__logo">
       </a>
       <div class="topbar__nav">
+        <a href="/dashboard">Dashboard</a>
         <a href="/">Brokers</a>
         <a href="/automation">Automation</a>
         <a href="/status">Status</a>
@@ -114,7 +115,10 @@
           <input type="text" id="tg-chat-id" name="chatId" placeholder="e.g. -1001234567890" autocomplete="off">
         </div>
         <div class="check-row">
-          <label><input type="checkbox" id="tg-enabled" checked> Enabled</label>
+          <label><input type="checkbox" id="tg-enabled" checked> Notifications enabled</label>
+        </div>
+        <div class="check-row">
+          <label><input type="checkbox" id="tg-control-enabled"> Allow Telegram control (start/stop/run from bot)</label>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn btn--primary">Save</button>

@@ -77,21 +77,78 @@ export async function runKotakNeoLogin(options = {}) {
 
     // Step 2: Click Login
     status.step = 'click_login';
-    const loginSelectors = ['a:has-text("Signup / Login")', 'a:has-text("Login")', 'button:has-text("Login")', 'a[href*="login"]'];
+    log('Looking for Login button...');
+    
+    // First, close any modal/popups that might be blocking
+    log('Checking for blocking modals...');
+    const modalCloseSelectors = [
+      '.tips-modal .close',
+      '.tips-modal .close-btn',
+      '.tips-modal button:has-text("Close")',
+      '.tips-modal button:has-text("Got it")',
+      '.modal .close',
+      '[class*="modal"] .close',
+      '[class*="modal"] button:has-text("Close")',
+      '[class*="modal"] button:has-text("Got it")',
+    ];
+    for (const sel of modalCloseSelectors) {
+      try {
+        const closeBtn = page.locator(sel).first();
+        if (await closeBtn.isVisible({ timeout: 1000 })) {
+          await closeBtn.click();
+          log('Closed modal popup.');
+          await new Promise((r) => setTimeout(r, 1000));
+          break;
+        }
+      } catch (_) {}
+    }
+    
+    // Also try pressing Escape to close any modal
+    await page.keyboard.press('Escape');
+    await new Promise((r) => setTimeout(r, 500));
+    
+    const loginSelectors = [
+      'button.login-btn',
+      'button:has-text("Login With Broker")',
+      'button:has-text("Signup / Login")',
+      'button:has-text("Login")',
+      'a:has-text("Signup / Login")',
+      'a:has-text("Login")',
+      'button:has-text("Sign In")',
+      'a[href*="login"]',
+      '[data-testid*="login"]',
+      '.login-btn',
+      '#login-btn',
+    ];
     let loginClicked = false;
     for (const sel of loginSelectors) {
       try {
         const el = page.locator(sel).first();
-        if (await el.isVisible({ timeout: 2000 })) {
-          await el.click();
+        if (await el.isVisible({ timeout: 3000 })) {
+          await el.click({ force: true });
           loginClicked = true;
           log('Clicked login entry.');
           break;
         }
       } catch (_) {}
     }
+    if (!loginClicked) {
+      // Try clicking any visible login-like element
+      const allLinks = await page.locator('a, button').all();
+      for (const el of allLinks) {
+        try {
+          const text = await el.textContent();
+          if (/login|sign\s*in|signin/i.test(text) && await el.isVisible()) {
+            await el.click({ force: true });
+            loginClicked = true;
+            log('Clicked login by text content.');
+            break;
+          }
+        } catch (_) {}
+      }
+    }
     if (!loginClicked) throw new Error('Could not find Login button');
-    await new Promise((r) => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, 3000));
 
     // Step 3: Search and select Kotak Neo
     status.step = 'select_kotak_neo';

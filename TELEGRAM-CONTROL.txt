@@ -1,0 +1,69 @@
+========================================
+  FiFTO - Control Server via Telegram
+========================================
+
+STEP 1: ENABLE TELEGRAM CONTROL (pick one)
+-----------------------------------------
+Option A - From dashboard (easiest):
+  1. Open http://localhost:3333/settings
+  2. In "Telegram Notifications", tick "Allow Telegram control (start/stop/run from bot)"
+  3. Click Save
+  4. Restart: pm2 restart fifto
+
+Option B - From .env:
+  1. Open .env in your project folder (same folder as server.js).
+  2. Add: TELEGRAM_CONTROL_ENABLED=true
+  3. Restart from the PROJECT folder so .env is loaded:
+     cd "C:\Users\manir\Desktop\TEST\Qautnman Login For Maniraja"
+     pm2 restart fifto
+
+STEP 2: USE YOUR BOT
+-------------------
+- Open Telegram.
+- Find your bot (the one you created for notifications).
+- Send any command below in the chat (or in the group where your TELEGRAM_CHAT_ID is).
+
+
+COMMANDS (send exactly as shown)
+--------------------------------
+
+/status
+  → Shows current automation state, schedule time, next run.
+
+/resume
+  → Start or resume daily automation (runs at scheduled time).
+
+/stop
+  → Stop automation. No automatic logins until you send /start again.
+
+/pause 1
+  → Pause for 1 day. Use /pause 3 for 3 days, /pause 7 for 7 days.
+
+/run
+  → Run all brokers (Flattrade + Kotak Neo) right now.
+
+/schedule 08:45
+  → One run per day at 08:45.
+/schedule 09:15 15:30
+  → Two runs per day: 09:15 AM and 03:30 PM (same day).
+
+/help
+  → List all commands.
+
+
+EXAMPLES
+--------
+  /status
+  /run
+  /stop
+  /start
+  /pause 3
+  /schedule 09:00
+
+
+SECURITY
+--------
+Only the chat ID set in .env (TELEGRAM_CHAT_ID) can run these commands.
+Other users cannot control your server.
+
+========================================
