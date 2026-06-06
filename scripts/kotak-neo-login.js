@@ -27,6 +27,38 @@ function log(msg) {
   console.log(`[${ts}] ${msg}`);
 }
 
+/** Aggressively close any modal/popup/banner on the page */
+async function closePopups(page) {
+  const selectors = [
+    '.tips-modal .close', '.tips-modal .close-btn',
+    '.tips-modal button:has-text("Close")', '.tips-modal button:has-text("Got it")',
+    '.tips-modal button:has-text("OK")',
+    '.modal .close', '.modal .close-btn', '.modal-close', '.close-button',
+    '[class*="modal"] .close', '[class*="modal"] .close-btn',
+    '[class*="modal"] button:has-text("Close")',
+    '[class*="modal"] button:has-text("Got it")',
+    '[class*="modal"] button:has-text("OK")',
+    '[class*="overlay"]', '[class*="backdrop"]',
+    'button[aria-label="Close"]', '[aria-label="Close"]',
+    '.dismiss-button', '.dismiss-btn',
+  ];
+  for (const sel of selectors) {
+    try {
+      const el = page.locator(sel).first();
+      if (await el.isVisible({ timeout: 500 })) {
+        await el.click({ force: true, timeout: 1000 });
+        await new Promise((r) => setTimeout(r, 500));
+      }
+    } catch (_) {}
+  }
+  await page.keyboard.press('Escape');
+  await new Promise((r) => setTimeout(r, 300));
+  try {
+    const body = page.locator('body');
+    await body.click({ position: { x: 5, y: 5 }, force: true, timeout: 500 }).catch(() => {});
+  } catch (_) {}
+}
+
 /** If totp is a base32 secret (e.g. from QR), generate current 6-digit code; else use as-is. */
 async function getTotpCode(totp) {
   const s = String(totp).trim().replace(/\s/g, '');
@@ -75,38 +107,13 @@ export async function runKotakNeoLogin(options = {}) {
     await page.goto(QUANTMAN_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForLoadState('networkidle').catch(() => {});
 
-    // Step 2: Click Login
+    // Step 2: Close any popups, then Click Login
+    status.step = 'close_popups';
+    log('Checking for blocking modals...');
+    await closePopups(page);
+    
     status.step = 'click_login';
     log('Looking for Login button...');
-    
-    // First, close any modal/popups that might be blocking
-    log('Checking for blocking modals...');
-    const modalCloseSelectors = [
-      '.tips-modal .close',
-      '.tips-modal .close-btn',
-      '.tips-modal button:has-text("Close")',
-      '.tips-modal button:has-text("Got it")',
-      '.modal .close',
-      '[class*="modal"] .close',
-      '[class*="modal"] button:has-text("Close")',
-      '[class*="modal"] button:has-text("Got it")',
-    ];
-    for (const sel of modalCloseSelectors) {
-      try {
-        const closeBtn = page.locator(sel).first();
-        if (await closeBtn.isVisible({ timeout: 1000 })) {
-          await closeBtn.click();
-          log('Closed modal popup.');
-          await new Promise((r) => setTimeout(r, 1000));
-          break;
-        }
-      } catch (_) {}
-    }
-    
-    // Also try pressing Escape to close any modal
-    await page.keyboard.press('Escape');
-    await new Promise((r) => setTimeout(r, 500));
-    
     const loginSelectors = [
       'button.login-btn',
       'button:has-text("Login With Broker")',
@@ -148,7 +155,8 @@ export async function runKotakNeoLogin(options = {}) {
       }
     }
     if (!loginClicked) throw new Error('Could not find Login button');
-    await new Promise((r) => setTimeout(r, 3000));
+    await new Promise((r) => setTimeout(r, 2000));
+    await closePopups(page);
 
     // Step 3: Search and select Kotak Neo
     status.step = 'select_kotak_neo';

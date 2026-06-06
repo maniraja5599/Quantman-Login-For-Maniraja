@@ -36,7 +36,7 @@ function render(d) {
   if (m) {
     const times = d.runAt2 ? `${d.runAt}, ${d.runAt2}` : d.runAt;
     m.textContent = d.enabled
-      ? `${times} | ${d.brokers.flattrade ? 'Flattrade ' : ''}${d.brokers.kotakNeo ? 'Kotak Neo' : ''}`.trim()
+      ? `${times} | ${d.brokers.flattrade ? 'Flattrade ' : ''}${d.brokers.kotakNeo ? 'Kotak Neo ' : ''}${d.brokers.dhan ? 'Dhan' : ''}`.trim()
       : 'Disabled';
   }
 
@@ -53,6 +53,7 @@ function render(d) {
     if (el('automation-runAt2')) el('automation-runAt2').value = d.runAt2 || '';
     if (el('automation-broker-flattrade')) el('automation-broker-flattrade').checked = !!d.brokers?.flattrade;
     if (el('automation-broker-kotak')) el('automation-broker-kotak').checked = !!d.brokers?.kotakNeo;
+    if (el('automation-broker-dhan')) el('automation-broker-dhan').checked = !!d.brokers?.dhan;
   }
 
   const warn = el('automation-warning');
@@ -98,7 +99,7 @@ function init() {
         body: JSON.stringify({
           runAt: el('automation-runAt')?.value || '09:15',
           runAt2: runAt2Val || null,
-          brokers: { flattrade: !!el('automation-broker-flattrade')?.checked, kotakNeo: !!el('automation-broker-kotak')?.checked },
+          brokers: { flattrade: !!el('automation-broker-flattrade')?.checked, kotakNeo: !!el('automation-broker-kotak')?.checked, dhan: !!el('automation-broker-dhan')?.checked },
         }),
       });
       setMsg('automation-settings-msg', r.message || 'Saved.', false);

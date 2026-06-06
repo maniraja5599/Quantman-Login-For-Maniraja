@@ -1,33 +1,38 @@
 @echo off
-title FiFTO - Run All Brokers
+title FiFTO - Start Server
 color 0E
-
-echo =========================================
-echo   FiFTO - Running All Broker Logins
-echo =========================================
-echo.
-
 cd /d "%~dp0"
 
 :: Check if server is running
 curl -s http://localhost:3333/api/status >nul 2>nul
-if %errorlevel% neq 0 (
-    echo [ERROR] Server is not running!
-    echo         Double-click START.bat first.
-    echo.
-    pause
-    exit /b 1
+if %errorlevel% equ 0 goto :run
+
+echo [1/2] Starting server...
+echo.
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr :3333 ^| findstr LISTENING 2^>nul') do (
+    taskkill /PID %%a /F >nul 2>nul
 )
+start /B node server.js >nul 2>&1
 
-echo [INFO] Server is running. Triggering all broker logins...
+echo [2/2] Waiting for server...
+setlocal enabledelayedexpansion
+for /l %%i in (1,1,15) do (
+    >nul timeout /t 1 /nobreak
+    curl -s http://localhost:3333/api/status >nul 2>nul
+    if !errorlevel! equ 0 (
+        endlocal
+        goto :run
+    )
+)
+endlocal
+echo [ERROR] Server did not start. Check for errors.
+pause
+exit /b 1
+
+:run
+echo [OK] Server is running.
+start http://localhost:3333
 echo.
-
-:: Trigger Run All via API
-node -e "fetch('http://localhost:3333/api/automation/run-now',{method:'POST',headers:{'Content-Type':'application/json'}}).then(r=>r.json()).then(d=>{console.log('');if(d.summary){Object.entries(d.summary.brokers||{}).forEach(([k,v])=>{console.log('  '+k+': '+(v.success?'SUCCESS':'FAILED - '+(v.error||v.step||'unknown')))});console.log('');console.log('  Result: '+(d.summary.success?'All brokers logged in!':'Some brokers failed.'))}else{console.log('  '+JSON.stringify(d))}}).catch(e=>console.log('  Error: '+e.message))"
-
-echo.
-echo =========================================
-echo   Done! Check dashboard for details.
-echo =========================================
+echo Dashboard opened. Click "Run now" on the page to start brokers.
 echo.
 pause

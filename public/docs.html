@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#059669">
+  <link rel="apple-touch-icon" href="images/fifto-logo-192.png">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FiFTO – Project Docs</title>
+  <link rel="icon" href="images/fifto-logo.png" type="image/png">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script>
+    (function() {
+      var t = localStorage.getItem('theme');
+      if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    })();
+  </script>
+  <style>
+    :root {
+      --bg2:       var(--card);
+      --bg3:       var(--bg);
+      --border2:   var(--border);
+      --accent:    var(--green);
+      --accent2:   var(--blue);
+      --orange:    #f97316;
+      --text2:     var(--muted);
+      --text3:     var(--muted);
+    }
+
+    /* ── Layout ── */
+    .container { max-width: 100%; margin: 0 auto; padding: 16px 0 80px; }
+
+    .hero { margin-bottom: 32px; }
+    .hero h1 {
+      font-size: 28px; font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .hero p { color: var(--text2); font-size: 15px; max-width: 600px; }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 6px; margin-bottom: 28px; flex-wrap: wrap; }
+    .tab-btn {
+      background: var(--bg2); border: 1px solid var(--border);
+      color: var(--text2); font-family: inherit; font-size: 13px; font-weight: 500;
+      padding: 8px 18px; border-radius: 8px; cursor: pointer;
+      transition: all .18s; display: flex; align-items: center; gap: 7px;
+    }
+    .tab-btn:hover { color: var(--text); border-color: var(--border2); background: var(--bg3); }
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--accent) 0%, #9b59b6 100%);
+      border-color: transparent; color: #fff;
+      box-shadow: 0 0 18px rgba(108,99,255,.35);
+    }
+    .tab-icon { font-size: 15px; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: fadeIn .2s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+
+    /* ── Cards / Sections ── */
+    .section { margin-bottom: 28px; }
+    .section-title {
+      font-size: 17px; font-weight: 700; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border);
+    }
+    .section-title .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent); flex-shrink: 0;
+    }
+
+    .card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+      margin-bottom: 16px; box-shadow: var(--shadow);
+    }
+    .card h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text); }
+    .card p  { color: var(--text2); line-height: 1.7; margin-bottom: 10px; }
+    .card p:last-child { margin-bottom: 0; }
+
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    @media (max-width: 700px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+
+    /* ── Flow Steps ── */
+    .flow {
+      display: flex; flex-direction: column; gap: 0;
+      position: relative;
+    }
+    .flow-step {
+      display: flex; gap: 14px; align-items: flex-start;
+      padding: 0 0 20px 0; position: relative;
+    }
+    .flow-step:last-child { padding-bottom: 0; }
+    .flow-step::before {
+      content: ''; position: absolute; left: 15px; top: 32px;
+      width: 2px; height: calc(100% - 20px);
+      background: linear-gradient(to bottom, var(--border2), transparent);
+    }
+    .flow-step:last-child::before { display: none; }
+    .step-num {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #9b59b6);
+      color: #fff; font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; box-shadow: 0 0 12px rgba(108,99,255,.4);
+    }
+    .step-content { flex: 1; padding-top: 5px; }
+    .step-label {
+      font-weight: 600; font-size: 13px; margin-bottom: 4px; color: var(--text);
+    }
+    .step-desc { color: var(--text2); font-size: 13px; line-height: 1.6; }
+
+    /* ── Code blocks ── */
+    .code-block {
+      background: #0a0c12; border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px 16px; margin: 10px 0;
+      font-family: 'JetBrains Mono', monospace; font-size: 12.5px;
+      line-height: 1.7; overflow-x: auto; color: #c9d1d9;
+      white-space: pre;
+    }
+    .code-block .c  { color: #6a9955; } /* comment */
+    .code-block .k  { color: #cc99cd; } /* keyword */
+    .code-block .s  { color: #f5a623; } /* string */
+    .code-block .v  { color: #9cdcfe; } /* var */
+    .code-block .n  { color: #79c0ff; } /* number */
+    .code-block .m  { color: #4fc1ff; } /* method */
+
+    /* ── Tags / Badges ── */
+    .tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 600; padding: 3px 9px;
+      border-radius: 20px; letter-spacing: .3px;
+    }
+    .tag-green  { background: rgba(34,197,94,.15);  color: #22c55e; border: 1px solid rgba(34,197,94,.3); }
+    .tag-blue   { background: rgba(59,130,246,.15); color: #60a5fa; border: 1px solid rgba(59,130,246,.3); }
+    .tag-purple { background: rgba(108,99,255,.15); color: var(--accent2); border: 1px solid rgba(108,99,255,.3); }
+    .tag-orange { background: rgba(249,115,22,.15); color: #fb923c; border: 1px solid rgba(249,115,22,.3); }
+    .tag-red    { background: rgba(239,68,68,.15);  color: #f87171; border: 1px solid rgba(239,68,68,.3); }
+
+    /* ── Table ── */
+    .doc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .doc-table th {
+      background: var(--bg3); color: var(--text2); font-weight: 600;
+      text-align: left; padding: 9px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px; letter-spacing: .5px; text-transform: uppercase;
+    }
+    .doc-table td {
+      padding: 10px 14px; border-bottom: 1px solid var(--border);
+      color: var(--text); vertical-align: top;
+    }
+    .doc-table tr:last-child td { border-bottom: none; }
+    .doc-table tr:hover td { background: var(--bg); }
+    code {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      background: var(--bg3); border: 1px solid var(--border);
+      padding: 2px 7px; border-radius: 4px; color: var(--accent2);
+    }
+
+    /* ── Alert box ── */
+    .alert {
+      border-radius: 8px; padding: 12px 16px; margin: 12px 0;
+      font-size: 13px; display: flex; gap: 10px; align-items: flex-start;
+    }
+    .alert-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .alert-info   { background: var(--blue-light);   border: 1px solid rgba(37,99,235,0.2);   color: var(--blue); }
+    .alert-warn   { background: var(--yellow-light); border: 1px solid rgba(217,119,6,0.2);   color: var(--yellow); }
+    .alert-success{ background: var(--green-light);  border: 1px solid rgba(5,150,105,0.2);   color: var(--green); }
+    .alert-danger { background: var(--red-light);    border: 1px solid rgba(220,38,38,0.2);   color: var(--red); }
+
+    /* ── Overview cards ── */
+    .overview-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px;
+      display: flex; gap: 14px; align-items: flex-start;
+    }
+    .overview-card .oc-icon {
+      font-size: 28px; width: 48px; height: 48px;
+      background: var(--bg3); border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .overview-card .oc-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+    .overview-card .oc-desc  { color: var(--text2); font-size: 13px; line-height: 1.6; }
+
+    /* ── Broker header ── */
+    .broker-header {
+      background: linear-gradient(135deg, var(--bg2), var(--bg3));
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 18px 20px; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .broker-icon {
+      width: 44px; height: 44px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+    }
+    .broker-icon.ft { background: linear-gradient(135deg,#f97316,#ea580c); }
+    .broker-icon.kn { background: linear-gradient(135deg,#ef4444,#b91c1c); }
+    .broker-icon.dh { background: linear-gradient(135deg,#22c55e,#16a34a); }
+    .broker-info h2 { font-size: 18px; font-weight: 700; margin-bottom: 3px; }
+    .broker-info p  { color: var(--text2); font-size: 13px; }
+    .broker-tags    { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+
+    /* ── API method ── */
+    .api-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .method-badge {
+      font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+      padding: 3px 9px; border-radius: 5px; flex-shrink: 0; width: 52px; text-align: center;
+    }
+    .method-get  { background: rgba(34,197,94,.2);  color: #22c55e; }
+    .method-post { background: rgba(59,130,246,.2); color: #60a5fa; }
+    .method-put  { background: rgba(234,179,8,.2);  color: #eab308; }
+    .api-path { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--text); }
+    .api-desc { color: var(--text2); font-size: 12px; margin-left: auto; }
+
+    /* ── Telegram commands ── */
+    .tg-cmd {
+      display: flex; gap: 14px; align-items: flex-start;
+      padding: 10px 14px; border-radius: 8px;
+      background: var(--bg3); margin-bottom: 8px;
+      border: 1px solid var(--border);
+    }
+    .tg-cmd code { white-space: nowrap; flex-shrink: 0; }
+    .tg-cmd span { color: var(--text2); font-size: 13px; }
+
+    /* ── PM2 ── */
+    .pm2-step {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 16px; margin-bottom: 10px;
+    }
+    .pm2-step-title { font-weight: 600; font-size: 13px; margin-bottom: 6px; color: var(--accent2); }
+
+    /* ── Env table ── */
+    .env-group { margin-bottom: 20px; }
+    .env-group-title {
+      font-size: 12px; font-weight: 700; letter-spacing: .7px;
+      text-transform: uppercase; color: var(--text3);
+      margin-bottom: 8px; padding-left: 2px;
+    }
+
+    /* ── Footer ── */
+    .doc-footer {
+      border-top: 1px solid var(--border); margin-top: 48px;
+      padding-top: 20px; text-align: center; color: var(--text3);
+      font-size: 12px;
+    }
+    .doc-footer a { color: var(--accent2); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav class="topbar">
+      <a href="/" class="topbar__brand">
+        <img src="images/fifto-logo.png" alt="FiFTO" class="topbar__logo">
+      </a>
+      <div class="topbar__nav">
+        <a href="/dashboard">Dashboard</a>
+        <a href="/">Brokers</a>
+        <a href="/automation">Automation</a>
+        <a href="/status">Status</a>
+        <a href="/settings">Settings</a>
+        <a href="/docs" class="active">Docs</a>
+      </div>
+      <div class="topbar__right">
+        <span class="run-pill" id="topbar-run"><span class="run-pill__dot"></span> Running: <span id="topbar-run-text"></span></span>
+        <button class="bell" id="notif-bell" type="button" aria-label="Notifications">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 7h18s-3 0-3-7"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span class="bell__badge" id="notif-badge"></span>
+        </button>
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle theme">
+          <svg class="theme-toggle__icon theme-toggle__icon--moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <svg class="theme-toggle__icon theme-toggle__icon--sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+        <span class="topbar__time" id="topbar-time" aria-live="off"></span>
+      </div>
+      <div class="notif-panel" id="notif-panel" role="dialog" aria-label="Notifications">
+        <div class="notif-head">
+          <div class="notif-head__title">Notifications</div>
+          <div class="notif-head__actions">
+            <button type="button" class="link-btn" id="notif-mark-all">Mark all read</button>
+            <button type="button" class="link-btn" id="notif-clear">Clear</button>
+          </div>
+        </div>
+        <div class="notif-list" id="notif-list"></div>
+      </div>
+    </nav>
+
+    <div class="container">
+
+  <div class="hero">
+    <h1>📋 FiFTO – Project Documentation</h1>
+    <p>Complete reference for the Quantman broker login automation system. Tab-wise breakdown of every flow, setting, and command — nothing missing.</p>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="overview"><span class="tab-icon">🏠</span> Overview</button>
+    <button class="tab-btn" data-tab="setup"><span class="tab-icon">⚙️</span> Setup</button>
+    <button class="tab-btn" data-tab="brokers"><span class="tab-icon">🏦</span> Brokers</button>
+    <button class="tab-btn" data-tab="automation"><span class="tab-icon">⏰</span> Automation</button>
+    <button class="tab-btn" data-tab="telegram"><span class="tab-icon">📱</span> Telegram</button>
+    <button class="tab-btn" data-tab="api"><span class="tab-icon">🔌</span> API</button>
+    <button class="tab-btn" data-tab="files"><span class="tab-icon">📁</span> Files</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       TAB 1: OVERVIEW
+  ══════════════════════════════════════════ -->
+  <div class="tab-panel active" id="tab-overview">
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> What is FiFTO?</div>
+      <div class="card">
+        <p><strong>FiFTO</strong> (Find, Fill, Trade, Out) is a fully automated broker login system for <a href="https://www.quantman.trade" style="color:var(--accent2)" target="_blank">Quantman.trade</a>. It opens a Playwright browser, navigates to each broker's login flow, fills your credentials automatically, and closes — every morning at the scheduled time.</p>
+        <p>No manual login needed. One server runs 24/7, logs into Flattrade, Kotak NEO, and Dhan at the configured time and sends Telegram notifications about success/failure.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Features</div>
+      <div class="grid2">
+        <div class="overview-card">
+          <div class="oc-icon">🤖</div>
+          <div>
+            <div class="oc-title">3 Broker Automations</div>
+            <div class="oc-desc">Flattrade, Kotak NEO, Dhan — each with their own login flow, handled automatically.</div>
+          </div>
+        </div>
+        <div class="overview-card">
+          <div class="oc-icon">⏰</div>
+          <div>
+            <div class="oc-title">Scheduled Daily Login</div>
+            <div class="oc-desc">Set 1 or 2 times per day. Runs automatically without you touching anything.</div>
+          </div>
+        </div>
+        <div class="overview-card">
+          <div class="oc-icon">📱</div>
+          <div>
+            <div class="oc-title">Telegram Control</div>
+            <div class="oc-desc">Get notifications on every run. Optionally control the bot via /commands from Telegram.</div>
+          </div>
+        </div>
+        <div class="overview-card">
+          <div class="oc-icon">🔐</div>
+          <div>
+            <div class="oc-title">TOTP Auto-generate</div>
+            <div class="oc-desc">Paste your base32 TOTP secret once — the system generates the 6-digit code every time.</div>
+          </div>
+        </div>
+        <div class="overview-card">
+          <div class="oc-icon">📊</div>
+          <div>
+            <div class="oc-title">Web Dashboard</div>
+            <div class="oc-desc">Beautiful dark UI at localhost:3333 — run brokers, view logs, configure settings.</div>
+          </div>
+        </div>
+        <div class="overview-card">
+          <div class="oc-icon">🛡️</div>
+          <div>
+            <div class="oc-title">PM2 Always-On</div>
+            <div class="oc-desc">Run as a PM2 daemon — auto-restarts on crash, survives system reboots.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Tech Stack</div>
+      <div class="grid3">
+        <div class="card">
+          <h3>🎭 Playwright</h3>
+          <p>Headless browser automation. Fills login forms, handles popups, OTP boxes.</p>
+          <span class="tag tag-blue">v1.40+</span>
+        </div>
+        <div class="card">
+          <h3>⚡ Express.js</h3>
+          <p>REST API server on port 3333. Serves the web dashboard and handles all API calls.</p>
+          <span class="tag tag-green">Port 3333</span>
+        </div>
+        <div class="card">
+          <h3>🔑 otplib</h3>
+          <p>Generates TOTP codes from base32 secrets. No need to manually open authenticator apps.</p>
+          <span class="tag tag-purple">RFC 6238</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Pages at a Glance</div>
+      <table class="doc-table">
+        <thead><tr><th>Page</th><th>URL</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>Brokers</td><td><code>/</code></td><td>Run any broker login manually (headless or visible browser)</td></tr>
+          <tr><td>Automation</td><td><code>/automation</code></td><td>Configure daily schedule, enable/pause/stop automation</td></tr>
+          <tr><td>Dashboard</td><td><code>/dashboard</code></td><td>Analytics — success rates, last 7 days, broker performance</td></tr>
+          <tr><td>Status</td><td><code>/status</code></td><td>Live status of each broker's last login result</td></tr>
+          <tr><td>Settings</td><td><code>/settings</code></td><td>Update broker credentials and Telegram config</td></tr>
+          <tr><td>Docs</td><td><code>/docs</code></td><td>This documentation page</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       TAB 2: SETUP
+  ══════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-setup">
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> First-Time Setup</div>
+      <div class="flow">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-label">Install Dependencies</div>
+            <div class="step-desc">Run once in the project folder:</div>
+            <div class="code-block">npm install
+npx playwright install chromium</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-label">Create .env file</div>
+            <div class="step-desc">Copy the example and fill your credentials:</div>
+            <div class="code-block">copy .env.example .env
+<span class="c"># Then open .env and fill in values</span></div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-label">Start the Server</div>
+            <div class="step-desc">Start the dashboard server:</div>
+            <div class="code-block">npm start
+<span class="c"># Open browser → http://localhost:3333</span></div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <div class="step-label">Configure Automation</div>
+            <div class="step-desc">Go to <strong>/automation</strong>, set your daily run time (e.g. 09:15), click Start.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">5</div>
+          <div class="step-content">
+            <div class="step-label">(Optional) Run with PM2</div>
+            <div class="step-desc">For 24/7 always-on operation with auto-restart:</div>
+            <div class="code-block">npm install -g pm2
+pm2 start ecosystem.config.cjs
+pm2 save
+pm2 startup</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> .env Variables Reference</div>
+      <div class="env-group">
+        <div class="env-group-title">Flattrade</div>
+        <table class="doc-table">
+          <thead><tr><th>Variable</th><th>Example</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>FLATTRADE_CLIENT_ID</code></td><td><code>FT003862</code></td><td>Your Flattrade client ID</td></tr>
+            <tr><td><code>FLATTRADE_USER_ID</code></td><td><code>FT003862</code></td><td>Usually same as client ID</td></tr>
+            <tr><td><code>FLATTRADE_PASSWORD</code></td><td><code>your_password</code></td><td>Flattrade account password</td></tr>
+            <tr><td><code>FLATTRADE_TOTP</code></td><td><code>17111992</code></td><td>Fixed OTP / DOB / TOTP code</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="env-group">
+        <div class="env-group-title">Kotak NEO</div>
+        <table class="doc-table">
+          <thead><tr><th>Variable</th><th>Example</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>KOTAKNEO_CLIENT_ID</code></td><td><code>YXLLE</code></td><td>Your Kotak NEO client ID</td></tr>
+            <tr><td><code>KOTAKNEO_USER_ID</code></td><td><code>9159036301</code></td><td>Registered mobile number</td></tr>
+            <tr><td><code>KOTAKNEO_TOTP</code></td><td><code>GHZMIQKF...26N</code></td><td>Base32 secret from QR code <em>or</em> 6-digit code</td></tr>
+            <tr><td><code>KOTAKNEO_MPIN</code></td><td><code>265599</code></td><td>Your 6-digit MPIN</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="env-group">
+        <div class="env-group-title">Dhan</div>
+        <table class="doc-table">
+          <thead><tr><th>Variable</th><th>Example</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>DHAN_USER_ID</code></td><td><code>9159036301</code></td><td>Registered mobile number</td></tr>
+            <tr><td><code>DHAN_TOTP</code></td><td><code>JTQGHHXY...KJ</code></td><td>Base32 secret from QR code <em>or</em> 6-digit code</td></tr>
+            <tr><td><code>DHAN_MPIN</code></td><td><code>265599</code></td><td>Your 6-digit PIN</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="env-group">
+        <div class="env-group-title">Telegram</div>
+        <table class="doc-table">
+          <thead><tr><th>Variable</th><th>Example</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>TELEGRAM_BOT_TOKEN</code></td><td><code>123456:ABC...</code></td><td>From @BotFather on Telegram</td></tr>
+            <tr><td><code>TELEGRAM_CHAT_ID</code></td><td><code>-100123456</code></td><td>Your personal or group chat ID</td></tr>
+            <tr><td><code>TELEGRAM_CONTROL_ENABLED</code></td><td><code>false</code></td><td>Set <code>true</code> to allow /commands from Telegram</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="alert alert-info">
+        <span class="alert-icon">💡</span>
+        <span><strong>Note:</strong> Credentials can also be saved via the Settings page at <code>/settings</code> — they're stored in <code>config/credentials.json</code> and take priority over .env values.</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> npm Scripts</div>
+      <table class="doc-table">
+        <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code>npm start</code></td><td>Start the dashboard server on port 3333</td></tr>
+          <tr><td><code>npm run flattrade</code></td><td>Run Flattrade login manually (headless)</td></tr>
+          <tr><td><code>npm run flattrade:headed</code></td><td>Run Flattrade login with visible browser</td></tr>
+          <tr><td><code>npm run kotakneo</code></td><td>Run Kotak NEO login manually (headless)</td></tr>
+          <tr><td><code>npm run kotakneo:headed</code></td><td>Run Kotak NEO login with visible browser</td></tr>
+          <tr><td><code>npm run dhan</code></td><td>Run Dhan login manually (headless)</td></tr>
+          <tr><td><code>npm run dhan:headed</code></td><td>Run Dhan login with visible browser</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> PM2 Setup (Always-On)</div>
+      <div class="pm2-step">
+        <div class="pm2-step-title">1. Install PM2 globally</div>
+        <div class="code-block">npm install -g pm2</div>
+      </div>
+      <div class="pm2-step">
+        <div class="pm2-step-title">2. Start with ecosystem config</div>
+        <div class="code-block">pm2 start ecosystem.config.cjs
+pm2 list   <span class="c"># check status</span>
+pm2 logs   <span class="c"># view live logs</span></div>
+      </div>
+      <div class="pm2-step">
+        <div class="pm2-step-title">3. Auto-start on reboot</div>
+        <div class="code-block">pm2 save
+pm2 startup   <span class="c"># follow the printed instructions</span></div>
+      </div>
+      <div class="pm2-step">
+        <div class="pm2-step-title">4. Useful PM2 commands</div>
+        <div class="code-block">pm2 restart quantman-login   <span class="c"># restart the app</span>
+pm2 stop quantman-login      <span class="c"># stop it</span>
+pm2 delete quantman-login    <span class="c"># remove from PM2</span></div>
+      </div>
+      <div class="alert alert-warn">
+        <span class="alert-icon">⚠️</span>
+        <span>The <code>RUN-ALL.bat</code> file in the project root is an alternative to PM2 on Windows — double-click it to start the server in a visible terminal window.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       TAB 3: BROKERS
+  ══════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-brokers">
+
+    <!-- FLATTRADE -->
+    <div class="section">
+      <div class="broker-header">
+        <div class="broker-icon ft">🔶</div>
+        <div class="broker-info">
+          <h2>Flattrade</h2>
+          <p>Script: <code>scripts/flattrade-login.js</code></p>
+        </div>
+        <div class="broker-tags">
+          <span class="tag tag-orange">Self-Auth</span>
+          <span class="tag tag-blue">Inline Form</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Credentials Needed</h3>
+        <table class="doc-table">
+          <thead><tr><th>Field</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>FLATTRADE_CLIENT_ID</code></td><td>Client ID (e.g. FT003862)</td></tr>
+            <tr><td><code>FLATTRADE_USER_ID</code></td><td>User ID (same as client ID usually)</td></tr>
+            <tr><td><code>FLATTRADE_PASSWORD</code></td><td>Account password</td></tr>
+            <tr><td><code>FLATTRADE_TOTP</code></td><td>Fixed OTP / DOB / TOTP secret</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Login Flow</h3>
+        <div class="flow">
+          <div class="flow-step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <div class="step-label">Open Quantman</div>
+              <div class="step-desc">Navigate to quantman.trade, wait for page load, close any popups.</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <div class="step-label">Click Login With Broker</div>
+              <div class="step-desc">Click the login button to open broker selection modal.</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <div class="step-label">Select Flattrade</div>
+              <div class="step-desc">Search "flattrade" in broker list, click the Flattrade card.</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">4</div>
+            <div class="step-content">
+              <div class="step-label">Fill Credentials & Login</div>
+              <div class="step-desc">Fills Client ID, User ID, Password, TOTP into the inline form on Quantman.</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">5</div>
+            <div class="step-content">
+              <div class="step-label">Done</div>
+              <div class="step-desc">Waits for success, checks for errors, returns status.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KOTAK NEO -->
+    <div class="section">
+      <div class="broker-header">
+        <div class="broker-icon kn">🔴</div>
+        <div class="broker-info">
+          <h2>Kotak NEO</h2>
+          <p>Script: <code>scripts/kotak-neo-login.js</code></p>
+        </div>
+        <div class="broker-tags">
+          <span class="tag tag-purple">is_self_authenticate</span>
+          <span class="tag tag-blue">Popup / New Tab</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Credentials Needed</h3>
+        <table class="doc-table">
+          <thead><tr><th>Field</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>KOTAKNEO_CLIENT_ID</code></td><td>Client ID (e.g. YXLLE)</td></tr>
+            <tr><td><code>KOTAKNEO_USER_ID</code></td><td>Registered mobile number</td></tr>
+            <tr><td><code>KOTAKNEO_TOTP</code></td><td>Base32 secret from authenticator QR, or 6-digit code</td></tr>
+            <tr><td><code>KOTAKNEO_MPIN</code></td><td>6-digit MPIN</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Login Flow (3-Step Popup)</h3>
+        <div class="flow">
+          <div class="flow-step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <div class="step-label">Select Kotak NEO on Quantman</div>
+              <div class="step-desc">Open Quantman → click Login With Broker → search "kotak neo" → click card → fill Client ID.</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <div class="step-label">Wait for Kotak Auth (New Tab / Iframe / Modal)</div>
+              <div class="step-desc">After clicking Login, the script polls for:<br>• A new tab with kotak/neo URL<br>• An iframe with kotak source<br>• An on-page modal with auth fields</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <div class="step-label">Step A — Mobile + Client ID → Validate</div>
+              <div class="step-desc">Fill <code>Registered Mobile Number</code> + <code>Client ID</code> → click <strong>Validate</strong>.</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">4</div>
+            <div class="step-content">
+              <div class="step-label">Step B — TOTP → Validate TOTP</div>
+              <div class="step-desc">Auto-generates 6-digit TOTP from base32 secret → fills it → clicks <strong>Validate TOTP</strong>.</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">5</div>
+            <div class="step-content">
+              <div class="step-label">Step C — MPIN → Validate MPIN → Done</div>
+              <div class="step-desc">Fills 6-digit MPIN → clicks <strong>Validate MPIN</strong>. Checks for error messages.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="alert alert-info">
+        <span class="alert-icon">💡</span>
+        <span>Kotak NEO is <strong>is_self_authenticate</strong> in Quantman — auth happens in a Kotak popup, not via redirect. The script handles new-tab, iframe, and on-page modal detection automatically.</span>
+      </div>
+    </div>
+
+    <!-- DHAN -->
+    <div class="section">
+      <div class="broker-header">
+        <div class="broker-icon dh">🟢</div>
+        <div class="broker-info">
+          <h2>Dhan</h2>
+          <p>Script: <code>scripts/dhan-login.js</code></p>
+        </div>
+        <div class="broker-tags">
+          <span class="tag tag-green">OAuth Redirect</span>
+          <span class="tag tag-orange">partner-login.dhan.co</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Credentials Needed</h3>
+        <table class="doc-table">
+          <thead><tr><th>Field</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>DHAN_USER_ID</code></td><td>Registered mobile number</td></tr>
+            <tr><td><code>DHAN_TOTP</code></td><td>Base32 secret from authenticator QR, or 6-digit code</td></tr>
+            <tr><td><code>DHAN_MPIN</code></td><td>6-digit PIN</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Login Flow (OAuth Redirect)</h3>
+        <div class="flow">
+          <div class="flow-step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <div class="step-label">Navigate Directly to /auth/dhan</div>
+              <div class="step-desc">Goes to <code>quantman.trade/auth/dhan</code> — skips broker modal entirely. This is Dhan's registered OAuth href in Quantman.</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <div class="step-label">Redirect to partner-login.dhan.co</div>
+              <div class="step-desc">Quantman immediately redirects to <code>partner-login.dhan.co/?consentID=...</code>. Script detects this URL.</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <div class="step-label">Fill Mobile → Proceed</div>
+              <div class="step-desc">Enters your mobile number into the phone field → clicks <strong>Proceed</strong>.</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">4</div>
+            <div class="step-content">
+              <div class="step-label">Fill TOTP (6 Boxes) → Proceed</div>
+              <div class="step-desc">Generates TOTP from base32 secret → fills each of the 6 <code>input[type="tel"]</code> boxes one by one → clicks <strong>Proceed</strong>.</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">5</div>
+            <div class="step-content">
+              <div class="step-label">Fill PIN (6 Boxes) → Auto-Submit</div>
+              <div class="step-desc">Fills 6-digit PIN into the 6 tel boxes. Dhan <strong>auto-submits</strong> on last digit — no button click needed.</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">6</div>
+            <div class="step-content">
+              <div class="step-label">Redirect Back to Quantman → Done</div>
+              <div class="step-desc">Waits for redirect back to quantman.trade. Checks for error messages. Returns success.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="alert alert-warn">
+        <span class="alert-icon">⚠️</span>
+        <span><strong>Why /auth/dhan direct navigate?</strong> Dhan's broker card in the Quantman modal uses <code>href="/auth/dhan"</code>. The closePopups helper (needed to dismiss tips/banners) presses Escape which also closes the broker modal. Going directly to <code>/auth/dhan</code> bypasses this problem entirely.</span>
+      </div>
+      <div class="alert alert-info">
+        <span class="alert-icon">💡</span>
+        <span><strong>TOTP &amp; PIN Input Detail:</strong> Dhan uses 6 plain <code>input[type="tel"]</code> boxes with zero attributes (no id, name, class, placeholder, inputmode, or maxlength). Standard OTP selectors don't match — the script detects them by type + count.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       TAB 4: AUTOMATION
+  ══════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-automation">
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> How Automation Works</div>
+      <div class="card">
+        <p>The server runs a background tick every <strong>30 seconds</strong>. At each tick, it checks if the configured time has passed today and the brokers haven't been logged in yet. If so, it triggers all selected brokers sequentially.</p>
+        <p>State is saved to <code>config/automation.json</code> — persists across server restarts.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Automation States</div>
+      <div class="grid3">
+        <div class="card">
+          <h3>▶️ Running</h3>
+          <p>Active state. Will login at the scheduled time every day. This is the normal operating state.</p>
+          <span class="tag tag-green">Auto-runs daily</span>
+        </div>
+        <div class="card">
+          <h3>⏸️ Paused</h3>
+          <p>Temporarily disabled for N days. After the pause expires, automatically resumes to Running.</p>
+          <span class="tag tag-orange">Auto-resumes</span>
+        </div>
+        <div class="card">
+          <h3>⏹️ Stopped</h3>
+          <p>Fully disabled. No automatic logins until manually started again from the web UI or Telegram.</p>
+          <span class="tag tag-red">Manual restart needed</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Schedule Configuration</div>
+      <div class="card">
+        <h3>Time Slots</h3>
+        <p>You can configure <strong>1 or 2 daily run times</strong> (e.g. 09:15 for market open, and 15:30 for afternoon).</p>
+        <div class="code-block"><span class="c"># Example: single time</span>
+runAt:  "09:15"
+runAt2: null
+
+<span class="c"># Example: two times per day</span>
+runAt:  "09:15"
+runAt2: "15:30"</div>
+      </div>
+      <div class="card">
+        <h3>Broker Selection</h3>
+        <p>Each broker can be individually enabled/disabled for automation:</p>
+        <div class="code-block">brokers: {
+  flattrade: true,   <span class="c">// ✅ included</span>
+  kotakNeo:  true,   <span class="c">// ✅ included</span>
+  dhan:      false   <span class="c">// ❌ skipped</span>
+}</div>
+      </div>
+      <div class="alert alert-info">
+        <span class="alert-icon">💡</span>
+        <span><strong>120s Startup Grace:</strong> On server start, automation waits 2 minutes before running its first tick. This prevents false triggers immediately after a server restart.</span>
+      </div>
+      <div class="alert alert-warn">
+        <span class="alert-icon">⚠️</span>
+        <span><strong>Schedule Change Guard:</strong> If you change the run time to a past time today, the system skips that day to prevent an immediate run. It'll run normally starting tomorrow.</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Run Lock</div>
+      <div class="card">
+        <p>Only <strong>one login run</strong> can happen at a time. If a run is already in progress (manual or automated), any new trigger returns a <code>busy</code> error. This prevents parallel browser sessions.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       TAB 5: TELEGRAM
+  ══════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-telegram">
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Telegram Setup</div>
+      <div class="flow">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-label">Create a Bot</div>
+            <div class="step-desc">Open Telegram → search <strong>@BotFather</strong> → send <code>/newbot</code> → follow prompts → copy the <strong>Bot Token</strong>.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-label">Get Your Chat ID</div>
+            <div class="step-desc">Start your bot, then open: <code>https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code> in a browser. Find <code>"chat":{"id": YOUR_ID}</code>.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-label">Save in Settings</div>
+            <div class="step-desc">Go to <code>/settings</code> → Telegram section → paste Bot Token + Chat ID → Save. Or add to .env.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <div class="step-label">Test Notification</div>
+            <div class="step-desc">Click <strong>Send test</strong> button in Settings → you should receive a message from your bot.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Notification Events</div>
+      <table class="doc-table">
+        <thead><tr><th>Event</th><th>When</th><th>Content</th></tr></thead>
+        <tbody>
+          <tr><td>✅ Login Report</td><td>After each batch run</td><td>Source, time, per-broker success/fail, next scheduled run</td></tr>
+          <tr><td>❌ Broker Failure</td><td>When any broker fails</td><td>Broker name, client ID, error message</td></tr>
+          <tr><td>📅 Schedule Updated</td><td>When run time changes</td><td>Old time → New time, next run date</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Telegram Control Commands</div>
+      <div class="alert alert-warn">
+        <span class="alert-icon">⚠️</span>
+        <span>Control commands only work when <code>TELEGRAM_CONTROL_ENABLED=true</code> is set AND only from the configured <code>TELEGRAM_CHAT_ID</code>.</span>
+      </div>
+      <div style="margin-top:14px">
+        <div class="tg-cmd"><code>/status</code> <span>Show current automation state, schedule, and next run time</span></div>
+        <div class="tg-cmd"><code>/resume</code> <span>Start or resume daily automation</span></div>
+        <div class="tg-cmd"><code>/stop</code> <span>Stop automation entirely</span></div>
+        <div class="tg-cmd"><code>/pause 3</code> <span>Pause for N days (e.g. 3 days). Auto-resumes after</span></div>
+        <div class="tg-cmd"><code>/run</code> <span>Immediately run all configured brokers right now</span></div>
+        <div class="tg-cmd"><code>/schedule 09:15</code> <span>Change daily run time. Single time per day</span></div>
+        <div class="tg-cmd"><code>/schedule 09:15 15:30</code> <span>Set two daily run times</span></div>
+        <div class="tg-cmd"><code>/help</code> <span>Show this command list</span></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Sample Notification Message</div>
+      <div class="code-block">📡 Automation
+🕐 06-06-2026, 09:15:02 AM
+🏁 06-06-2026, 09:17:45 AM
+
+✅ Flattrade (FT003862)
+✅ Kotak Neo (YXLLE)
+✅ Dhan (9159036301)
+
+📅 Next: 07-06-2026, 09:15:00 AM
+⏰ 09:15 AM daily
+▶️ Active</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       TAB 6: API
+  ══════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-api">
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Base URL</div>
+      <div class="code-block">http://localhost:3333/api</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Status &amp; Logs</div>
+      <div class="card">
+        <div class="api-row">
+          <span class="method-badge method-get">GET</span>
+          <span class="api-path">/api/status</span>
+          <span class="api-desc">Overall broker login status + automation snapshot</span>
+        </div>
+        <div class="api-row">
+          <span class="method-badge method-get">GET</span>
+          <span class="api-path">/api/activity-log</span>
+          <span class="api-desc">Recent activity log (last 500 entries)</span>
+        </div>
+        <div class="api-row">
+          <span class="method-badge method-get">GET</span>
+          <span class="api-path">/api/automation</span>
+          <span class="api-desc">Current automation config + next run time</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Broker Login Endpoints</div>
+      <div class="card">
+        <div class="api-row">
+          <span class="method-badge method-post">POST</span>
+          <span class="api-path">/api/flattrade/login</span>
+          <span class="api-desc">Trigger Flattrade login</span>
+        </div>
+        <div class="api-row">
+          <span class="method-badge method-post">POST</span>
+          <span class="api-path">/api/kotakneo/login</span>
+          <span class="api-desc">Trigger Kotak NEO login</span>
+        </div>
+        <div class="api-row">
+          <span class="method-badge method-post">POST</span>
+          <span class="api-path">/api/dhan/login</span>
+          <span class="api-desc">Trigger Dhan login</span>
+        </div>
+        <div class="code-block" style="margin-top:12px"><span class="c">// Request body (optional)</span>
+{ <span class="v">"headed"</span>: <span class="k">true</span> }   <span class="c">// show visible browser window</span>
+{ <span class="v">"headed"</span>: <span class="k">false</span> }  <span class="c">// headless (default)</span>
+
+<span class="c">// Response</span>
+{
+  <span class="v">"success"</span>: <span class="k">true</span>,
+  <span class="v">"step"</span>: <span class="s">"done"</span>,
+  <span class="v">"error"</span>: <span class="k">null</span>,
+  <span class="v">"lastRun"</span>: <span class="s">"2026-06-06T04:15:00.000Z"</span>
+}</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Credentials Endpoints</div>
+      <div class="card">
+        <div class="api-row">
+          <span class="method-badge method-get">GET</span>
+          <span class="api-path">/api/credentials/flattrade</span>
+          <span class="api-desc">Flattrade creds (masked)</span>
+        </div>
+        <div class="api-row">
+          <span class="method-badge method-put">PUT</span>
+          <span class="api-path">/api/credentials/flattrade</span>
+          <span class="api-desc">Update Flattrade creds</span>
+        </div>
+        <div class="api-row">
+          <span class="method-badge method-get">GET</span>
+          <span class="api-path">/api/credentials/kotakneo</span>
+          <span class="api-desc">Kotak NEO creds (masked)</span>
+        </div>
+        <div class="api-row">
+          <span class="method-badge method-put">PUT</span>
+          <span class="api-path">/api/credentials/kotakneo</span>
+          <span class="api-desc">Update Kotak NEO creds</span>
+        </div>
+        <div class="api-row">
+          <span class="method-badge method-get">GET</span>
+          <span class="api-path">/api/credentials/dhan</span>
+          <span class="api-desc">Dhan creds (masked)</span>
+        </div>
+        <div class="api-row">
+          <span class="method-badge method-put">PUT</span>
+          <span class="api-path">/api/credentials/dhan</span>
+          <span class="api-desc">Update Dhan creds</span>
+        </div>
+        <div class="api-row">
+          <span class="method-badge method-get">GET</span>
+          <span class="api-path">/api/credentials/telegram</span>
+          <span class="api-desc">Telegram config (masked)</span>
+        </div>
+        <div class="api-row">
+          <span class="method-badge method-put">PUT</span>
+          <span class="api-path">/api/credentials/telegram</span>
+          <span class="api-desc">Update Telegram config</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Automation Control Endpoints</div>
+      <div class="card">
+        <div class="api-row">
+          <span class="method-badge method-put">PUT</span>
+          <span class="api-path">/api/automation</span>
+          <span class="api-desc">Update schedule (runAt, runAt2, brokers)</span>
+        </div>
+        <div class="api-row">
+          <span class="method-badge method-post">POST</span>
+          <span class="api-path">/api/automation/start</span>
+          <span class="api-desc">Start/enable automation</span>
+        </div>
+        <div class="api-row">
+          <span class="method-badge method-post">POST</span>
+          <span class="api-path">/api/automation/resume</span>
+          <span class="api-desc">Resume from paused state</span>
+        </div>
+        <div class="api-row">
+          <span class="method-badge method-post">POST</span>
+          <span class="api-path">/api/automation/stop</span>
+          <span class="api-desc">Stop automation</span>
+        </div>
+        <div class="api-row">
+          <span class="method-badge method-post">POST</span>
+          <span class="api-path">/api/automation/pause</span>
+          <span class="api-desc">Pause for N days <code>{"days": 3}</code></span>
+        </div>
+        <div class="api-row">
+          <span class="method-badge method-post">POST</span>
+          <span class="api-path">/api/automation/run-now</span>
+          <span class="api-desc">Run all enabled brokers immediately</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Telegram Endpoints</div>
+      <div class="card">
+        <div class="api-row">
+          <span class="method-badge method-post">POST</span>
+          <span class="api-path">/api/telegram/test</span>
+          <span class="api-desc">Send a test notification to your Telegram chat</span>
+        </div>
+        <div class="api-row">
+          <span class="method-badge method-post">POST</span>
+          <span class="api-path">/api/telegram/send</span>
+          <span class="api-desc">Send custom message <code>{"title":"...", "message":"..."}</code></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       TAB 7: FILES
+  ══════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-files">
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Project Structure</div>
+      <div class="code-block">📁 Quantman Login For Maniraja/
+│
+├── 📄 server.js                 <span class="c">← Main server (Express + automation engine)</span>
+├── 📄 package.json              <span class="c">← npm scripts & dependencies</span>
+├── 📄 .env                      <span class="c">← Your credentials (never commit!)</span>
+├── 📄 .env.example              <span class="c">← Template for .env</span>
+├── 📄 ecosystem.config.cjs      <span class="c">← PM2 configuration</span>
+├── 📄 RUN-ALL.bat               <span class="c">← Windows: double-click to start server</span>
+│
+├── 📁 scripts/
+│   ├── 📄 flattrade-login.js    <span class="c">← Flattrade automation script</span>
+│   ├── 📄 kotak-neo-login.js    <span class="c">← Kotak NEO automation script</span>
+│   └── 📄 dhan-login.js         <span class="c">← Dhan automation script</span>
+│
+├── 📁 config/
+│   ├── 📄 credentials.json      <span class="c">← Saved credentials (from Settings UI)</span>
+│   ├── 📄 automation.json       <span class="c">← Saved automation state/schedule</span>
+│   └── 📄 activity-log.json     <span class="c">← Activity log (last 500 entries)</span>
+│
+└── 📁 public/
+    ├── 📄 index.html            <span class="c">← Brokers page</span>
+    ├── 📄 dashboard.html        <span class="c">← Analytics dashboard</span>
+    ├── 📄 automation.html       <span class="c">← Automation controls</span>
+    ├── 📄 settings.html         <span class="c">← Credentials & Telegram settings</span>
+    ├── 📄 status.html           <span class="c">← Live broker status</span>
+    ├── 📄 docs.html             <span class="c">← This documentation page</span>
+    ├── 📁 css/
+    │   └── 📄 style.css         <span class="c">← Shared dark theme styles</span>
+    ├── 📁 js/
+    │   ├── 📄 brokers.js        <span class="c">← Broker page logic & API calls</span>
+    │   ├── 📄 automation.js     <span class="c">← Automation page logic</span>
+    │   ├── 📄 dashboard.js      <span class="c">← Dashboard charts & stats</span>
+    │   ├── 📄 settings.js       <span class="c">← Settings form handlers</span>
+    │   ├── 📄 status.js         <span class="c">← Status page logic</span>
+    │   ├── 📄 notify.js         <span class="c">← In-app notification system</span>
+    │   └── 📄 time.js           <span class="c">← Clock display</span>
+    └── 📁 images/
+        └── 📄 fifto-logo.png    <span class="c">← App logo</span></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Key Files Explained</div>
+      <div class="grid2">
+        <div class="card">
+          <h3>🖥️ server.js</h3>
+          <p>The heart of the project. Contains:</p>
+          <ul style="color:var(--text2);padding-left:18px;line-height:2">
+            <li>Express REST API (all /api routes)</li>
+            <li>Automation tick loop (30s interval)</li>
+            <li>Subprocess runner for login scripts</li>
+            <li>Telegram sender + control polling</li>
+            <li>Credentials loader (JSON + .env merge)</li>
+            <li>Activity log management</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>📄 config/credentials.json</h3>
+          <p>Stores credentials saved via the Settings UI. Values here <strong>override</strong> .env values.</p>
+          <div class="code-block" style="font-size:11px">{
+  "kotakNeo": { "clientId": "YXLLE", ... },
+  "dhan":     { "userId": "9159...", ... },
+  "telegram": { "enabled": true, ... }
+}</div>
+        </div>
+        <div class="card">
+          <h3>📄 config/automation.json</h3>
+          <p>Persisted automation state. Survives server restarts.</p>
+          <div class="code-block" style="font-size:11px">{
+  "enabled": true,
+  "state": "running",
+  "runAt": "09:15",
+  "runAt2": null,
+  "brokers": { "dhan": true, ... },
+  "lastAttemptDate": "2026-06-06"
+}</div>
+        </div>
+        <div class="card">
+          <h3>🎭 scripts/*.js</h3>
+          <p>Each script is standalone — can be run directly or via the server subprocess runner. They export a <code>runXxxLogin(options)</code> function and also have a <code>main()</code> for CLI use.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="dot"></span> Data Flow</div>
+      <div class="card">
+        <div class="flow">
+          <div class="flow-step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <div class="step-label">Trigger (Manual or Scheduled)</div>
+              <div class="step-desc">Via web UI button, API call, Telegram /run, or automation tick.</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <div class="step-label">Run Lock Check</div>
+              <div class="step-desc">If already running → return busy. If free → acquire lock.</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <div class="step-label">Spawn Subprocess</div>
+              <div class="step-desc">server.js spawns <code>node scripts/xxx-login.js</code> as a child process with credentials injected as env vars. 2-minute timeout.</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">4</div>
+            <div class="step-content">
+              <div class="step-label">Script Runs Playwright</div>
+              <div class="step-desc">Browser opens, fills credentials, returns JSON <code>{"success":true,"step":"done"}</code> via stdout.</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">5</div>
+            <div class="step-content">
+              <div class="step-label">Parse Result → Update Status</div>
+              <div class="step-desc">Server parses stdout JSON, updates statusStore, logs activity, sends Telegram notification.</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">6</div>
+            <div class="step-content">
+              <div class="step-label">Release Lock → Return Response</div>
+              <div class="step-desc">Run lock released. Result returned to caller (UI, Telegram, or automation engine).</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <div class="doc-footer">
+      Built for <a href="https://www.quantman.trade" target="_blank">Quantman.trade</a> &nbsp;·&nbsp;
+      Developed by <a href="https://www.instagram.com/maniraja__/?hl=en" target="_blank">Mani Raja</a>
+    </div>
+  </div>
+
+  <script src="js/notify.js"></script>
+  <script src="js/time.js"></script>
+  <script>
+    const btns   = document.querySelectorAll('.tab-btn');
+    const panels = document.querySelectorAll('.tab-panel');
+
+    btns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = btn.dataset.tab;
+        btns.forEach(b => b.classList.remove('active'));
+        panels.forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + target).classList.add('active');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    });
+  </script>
+</body>
+</html>

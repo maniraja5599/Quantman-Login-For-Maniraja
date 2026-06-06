@@ -40,6 +40,7 @@ function classifyBrokerEntry(e) {
   if (!e || !e.title) return null;
   if (e.title.startsWith('Flattrade (')) return 'flattrade';
   if (e.title.startsWith('Kotak Neo (')) return 'kotakNeo';
+  if (e.title.startsWith('Dhan (')) return 'dhan';
   return null;
 }
 
@@ -73,6 +74,7 @@ function computeAnalytics(logEntries) {
   const brokers = {
     flattrade: { success: 0, error: 0, lastSuccess: null },
     kotakNeo: { success: 0, error: 0, lastSuccess: null },
+    dhan: { success: 0, error: 0, lastSuccess: null },
   };
 
   (logEntries || []).forEach(function (e) {
@@ -257,6 +259,7 @@ async function refresh() {
     renderOverview(status.automation, analytics);
     renderBrokerCard('dash-ft', analytics.brokers.flattrade);
     renderBrokerCard('dash-kn', analytics.brokers.kotakNeo);
+    renderBrokerCard('dash-dhan', analytics.brokers.dhan);
     renderActivity(analytics.recent);
   } catch (err) {
     // silent; dashboard will show placeholders

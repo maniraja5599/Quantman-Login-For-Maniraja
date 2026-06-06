@@ -237,6 +237,12 @@
     if (knPrev && knNext && knPrev.lastRun !== knNext.lastRun) {
       pushNotification(knNext.ok ? 'success' : 'error', 'Kotak Neo login', knNext.ok ? 'Success' : ('Failed: ' + (knNext.err || 'error')), { system: true });
     }
+
+    var dnPrev = summarizeBroker('Dhan', prev && prev.dhan);
+    var dnNext = summarizeBroker('Dhan', next.dhan);
+    if (dnPrev && dnNext && dnPrev.lastRun !== dnNext.lastRun) {
+      pushNotification(dnNext.ok ? 'success' : 'error', 'Dhan login', dnNext.ok ? 'Success' : ('Failed: ' + (dnNext.err || 'error')), { system: true });
+    }
   }
 
   async function poll() {
@@ -289,15 +295,41 @@
     lastStatus: null,
   };
 
+  function initTheme() {
+    var toggleBtn = document.getElementById('theme-toggle');
+    if (!toggleBtn) return;
+
+    toggleBtn.addEventListener('click', function () {
+      var currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+      var newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      
+      if (newTheme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        localStorage.setItem('theme', 'dark');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('theme', 'light');
+      }
+    });
+  }
+
   // Public API for other page scripts
   window.FiFTO = window.FiFTO || {};
   window.FiFTO.notify = pushNotification;
 
   function boot() {
     initUi();
+    initTheme();
     persistAndRender();
     poll();
     setInterval(poll, 4000);
+
+    // Register PWA Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(function (err) {
+        console.warn('Service Worker registration failed:', err);
+      });
+    }
   }
 
   if (document.readyState === 'loading') {

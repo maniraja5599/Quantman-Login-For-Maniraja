@@ -44,18 +44,22 @@ function setLog(broker, text) {
 }
 
 function setEditVisible(broker, show) {
-  const link = el(broker === 'flattrade' ? 'flattrade-config-edit' : 'kotak-config-edit');
+  const map = { flattrade: 'flattrade-config-edit', kotak: 'kotak-config-edit', dhan: 'dhan-config-edit' };
+  const link = el(map[broker] || '');
   if (link) link.style.display = show ? '' : 'none';
 }
 
 function renderCreds(broker, data) {
-  const v = el(broker === 'flattrade' ? 'flattrade-config-values' : 'kotak-config-values');
+  const map = { flattrade: 'flattrade-config-values', kotak: 'kotak-config-values', dhan: 'dhan-config-values' };
+  const v = el(map[broker]);
   if (!v) return;
   setEditVisible(broker, !data.configured);
   if (!data.configured) { v.textContent = 'Not configured. Go to Settings.'; return; }
   const parts = broker === 'flattrade'
     ? [data.clientId && `Client ${data.clientId}`, data.userId && `User ${data.userId}`, data.password && 'Pass ******', data.totp && `OTP ${data.totp}`].filter(Boolean)
-    : [data.clientId && `Client ${data.clientId}`, data.userId && `Mobile ${data.userId}`, data.totp && 'TOTP ******', data.mpin && 'MPIN ******'].filter(Boolean);
+    : broker === 'dhan'
+      ? [data.userId && `Mobile ${data.userId}`, data.totp && 'TOTP ******', data.mpin && 'PIN ******'].filter(Boolean)
+      : [data.clientId && `Client ${data.clientId}`, data.userId && `Mobile ${data.userId}`, data.totp && 'TOTP ******', data.mpin && 'MPIN ******'].filter(Boolean);
   v.textContent = parts.join(' | ');
 }
 
@@ -98,18 +102,29 @@ function renderStatus(data) {
     else { setBadge('kotak', kn.success ? 'success' : (kn.error ? 'error' : null)); setMeta('kotak', `${fmtDate(kn.lastRun)}${kn.step ? ` | ${kn.step}` : ''}${kn.error ? ` | ${kn.error}` : ''}`); }
   } else { setBadge('kotak', null); setMeta('kotak', 'No run yet.'); }
 
+  const dn = data.dhan;
+  if (dn) {
+    if (dn.configured === false) { setBadge('dhan', null); setMeta('dhan', dn.message || 'Not configured.'); }
+    else { setBadge('dhan', dn.success ? 'success' : (dn.error ? 'error' : null)); setMeta('dhan', `${fmtDate(dn.lastRun)}${dn.step ? ` | ${dn.step}` : ''}${dn.error ? ` | ${dn.error}` : ''}`); }
+  } else { setBadge('dhan', null); setMeta('dhan', 'No run yet.'); }
+
   renderAutoMini(data.automation);
 }
 
+function brokerLabel(key) {
+  return key === 'flattrade' ? 'Flattrade' : key === 'kotakneo' ? 'Kotak Neo' : key === 'dhan' ? 'Dhan' : key;
+}
+
 async function runBroker(broker, headed) {
-  const key = broker === 'flattrade' ? 'flattrade' : 'kotak';
-  const btn = el(broker === 'flattrade' ? 'flattrade-login' : 'kotak-login');
-  const btn2 = el(broker === 'flattrade' ? 'flattrade-login-headed' : 'kotak-login-headed');
+  const key = broker === 'flattrade' ? 'flattrade' : broker === 'dhan' ? 'dhan' : 'kotak';
+  const label = brokerLabel(broker);
+  const btn = el(key + '-login');
+  const btn2 = el(key + '-login-headed');
   setBadge(key, 'running');
   setMeta(key, 'Running... up to 2 minutes.');
   setLog(key, 'Triggering login...');
   if (window.FiFTO && typeof window.FiFTO.notify === 'function') {
-    window.FiFTO.notify('info', 'Login started', (broker === 'flattrade' ? 'Flattrade' : 'Kotak Neo') + (headed ? ' (visible)' : ''), { silent: true });
+    window.FiFTO.notify('info', 'Login started', label + (headed ? ' (visible)' : ''), { silent: true });
   }
   [btn, btn2].forEach(b => { if (b) b.disabled = true; });
 
@@ -117,7 +132,8 @@ async function runBroker(broker, headed) {
   const tid = setTimeout(() => ac.abort(), LOGIN_TIMEOUT_MS);
 
   try {
-    const r = await fetchJson(`${API}/${broker}/login`, {
+    const apiPath = broker === 'flattrade' ? 'flattrade' : broker === 'dhan' ? 'dhan' : 'kotakneo';
+    const r = await fetchJson(`${API}/${apiPath}/login`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ headed }), signal: ac.signal,
     });
@@ -126,7 +142,7 @@ async function runBroker(broker, headed) {
     setMeta(key, r.success ? `Success | ${fmtDate(r.lastRun)}` : `${fmtDate(r.lastRun)} | ${r.step || 'error'}${r.error ? ` | ${r.error}` : ''}`);
     setLog(key, r.success ? 'Login completed.' : `Failed: ${r.error || r.step || 'Unknown'}`);
     if (window.FiFTO && typeof window.FiFTO.notify === 'function') {
-      window.FiFTO.notify(r.success ? 'success' : 'error', (broker === 'flattrade' ? 'Flattrade' : 'Kotak Neo') + ' login', r.success ? 'Success' : ('Failed: ' + (r.error || r.step || 'error')), { system: true });
+      window.FiFTO.notify(r.success ? 'success' : 'error', label + ' login', r.success ? 'Success' : ('Failed: ' + (r.error || r.step || 'error')), { system: true });
     }
     await refresh();
   } catch (err) {
@@ -134,7 +150,7 @@ async function runBroker(broker, headed) {
     const msg = err.name === 'AbortError' ? 'Timed out. Try visible mode.' : (err.message || 'Request failed.');
     setBadge(key, 'error'); setMeta(key, msg); setLog(key, msg);
     if (window.FiFTO && typeof window.FiFTO.notify === 'function') {
-      window.FiFTO.notify('error', (broker === 'flattrade' ? 'Flattrade' : 'Kotak Neo') + ' login', msg, { system: true });
+      window.FiFTO.notify('error', label + ' login', msg, { system: true });
     }
   } finally {
     [btn, btn2].forEach(b => { if (b) b.disabled = false; });
@@ -142,22 +158,26 @@ async function runBroker(broker, headed) {
 }
 
 async function refresh() {
-  const [status, ft, kn] = await Promise.all([
+  const [status, ft, kn, dn] = await Promise.all([
     fetchJson(`${API}/status`),
     fetchJson(`${API}/credentials/flattrade`).catch(() => ({})),
     fetchJson(`${API}/credentials/kotakneo`).catch(() => ({})),
+    fetchJson(`${API}/credentials/dhan`).catch(() => ({})),
   ]);
   renderStatus(status);
   renderCreds('flattrade', ft);
   renderCreds('kotak', kn);
+  renderCreds('dhan', dn);
 }
 
 async function init() {
-  try { await refresh(); } catch (err) { setMeta('flattrade', err.message); setMeta('kotak', err.message); }
+  try { await refresh(); } catch (err) { setMeta('flattrade', err.message); setMeta('kotak', err.message); setMeta('dhan', err.message); }
   el('flattrade-login')?.addEventListener('click', () => runBroker('flattrade', false));
   el('flattrade-login-headed')?.addEventListener('click', () => runBroker('flattrade', true));
   el('kotak-login')?.addEventListener('click', () => runBroker('kotakneo', false));
   el('kotak-login-headed')?.addEventListener('click', () => runBroker('kotakneo', true));
+  el('dhan-login')?.addEventListener('click', () => runBroker('dhan', false));
+  el('dhan-login-headed')?.addEventListener('click', () => runBroker('dhan', true));
 
   el('automation-warning-start')?.addEventListener('click', async () => {
     try {

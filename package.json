@@ -8,6 +8,8 @@
     "flattrade:headed": "HEADED=1 node scripts/flattrade-login.js",
     "kotakneo": "node scripts/kotak-neo-login.js",
     "kotakneo:headed": "HEADED=1 node scripts/kotak-neo-login.js",
+    "dhan": "node scripts/dhan-login.js",
+    "dhan:headed": "HEADED=1 node scripts/dhan-login.js",
     "start": "node server.js",
     "web": "node server.js"
   },

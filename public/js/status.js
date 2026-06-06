@@ -122,6 +122,7 @@ async function refresh() {
     var data = await fetchJson(`${API}/status`);
     renderMetric('status-flattrade', data.flattrade, 'No run yet');
     renderMetric('status-kotak', data.kotakNeo, 'No run yet');
+    renderMetric('status-dhan', data.dhan, 'No run yet');
     renderAutomation(data.automation);
   } catch (_) {}
 

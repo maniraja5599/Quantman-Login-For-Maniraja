@@ -37,6 +37,10 @@ function renderCredentials(broker, data) {
     if (el('kn-user-id')) el('kn-user-id').placeholder = data.userId || 'e.g. 9159036301';
     if (el('kn-totp')) el('kn-totp').placeholder = data.totp ? 'Existing secret or code saved' : 'Base32 secret from QR or current 6-digit code';
     if (el('kn-mpin')) el('kn-mpin').placeholder = data.mpin ? 'Existing MPIN saved' : 'e.g. 265599';
+  } else if (broker === 'dhan') {
+    if (el('dhan-user-id')) el('dhan-user-id').placeholder = data.userId || 'e.g. 9159036301';
+    if (el('dhan-totp')) el('dhan-totp').placeholder = data.totp ? 'Existing secret or code saved' : 'Base32 secret from QR or current 6-digit code';
+    if (el('dhan-mpin')) el('dhan-mpin').placeholder = data.mpin ? 'Existing PIN saved' : 'e.g. 265599';
   }
 }
 
@@ -147,6 +151,7 @@ async function initTelegram() {
 function init() {
   initForm('flattrade', 'flattrade-credentials-form', 'flattrade-cred-msg');
   initForm('kotakneo', 'kotakneo-credentials-form', 'kotakneo-cred-msg');
+  initForm('dhan', 'dhan-credentials-form', 'dhan-cred-msg');
   initTelegram();
 }
 

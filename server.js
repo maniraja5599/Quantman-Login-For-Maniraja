@@ -12,7 +12,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Load .env from project folder so it works when PM2 is run from any directory
 dotenv.config({ path: path.join(__dirname, '.env') });
 const app = express();
-const PORT = process.env.PORT || 3333;
+/** HTTP port is fixed; .env PORT is ignored so PM2 and scripts always match 3333. */
+const PORT = 3333;
 const LOGIN_TIMEOUT_MS = 120000;
 const AUTOMATION_TICK_MS = 30000;
 const CREDENTIALS_PATH = path.join(__dirname, 'config', 'credentials.json');
@@ -23,7 +24,11 @@ const MAX_LOG_ENTRIES = 500;
 const statusStore = {
   flattrade: null,
   kotakNeo: null,
+  dhan: null,
 };
+
+const SERVER_STARTED_AT = Date.now();
+const STARTUP_GRACE_MS = 120000;
 
 const runRuntime = {
   isRunning: false,
@@ -83,6 +88,7 @@ function defaultAutomationState() {
     brokers: {
       flattrade: true,
       kotakNeo: true,
+      dhan: true,
     },
     pauseUntil: null,
     lastAttemptDate: null,
@@ -113,6 +119,7 @@ function normalizeAutomationState(raw = {}) {
     brokers: {
       flattrade: raw.brokers?.flattrade ?? base.brokers.flattrade,
       kotakNeo: raw.brokers?.kotakNeo ?? base.brokers.kotakNeo,
+      dhan: raw.brokers?.dhan ?? base.brokers.dhan,
     },
     pauseUntil: raw.pauseUntil || null,
     lastAttemptDate: raw.lastAttemptDate || null,
@@ -206,12 +213,13 @@ function fmtTimeAMPM(timeStr) {
 }
 
 function brokerLabel(key) {
-  return key === 'flattrade' ? 'Flattrade' : key === 'kotakNeo' ? 'Kotak Neo' : key;
+  return key === 'flattrade' ? 'Flattrade' : key === 'kotakNeo' ? 'Kotak Neo' : key === 'dhan' ? 'Dhan' : key;
 }
 
 function getBrokerClientId(brokerKey) {
   if (brokerKey === 'flattrade') return getFlattradeEnv().FLATTRADE_CLIENT_ID || '-';
   if (brokerKey === 'kotakNeo') return getKotakNeoEnv().KOTAKNEO_CLIENT_ID || '-';
+  if (brokerKey === 'dhan') return getDhanEnv().DHAN_USER_ID || '-';
   return '-';
 }
 
@@ -257,6 +265,7 @@ function buildScheduleMessage(snap) {
   const enabledBrokers = [];
   if (snap.brokers?.flattrade) enabledBrokers.push(`Flattrade (${getBrokerClientId('flattrade')})`);
   if (snap.brokers?.kotakNeo) enabledBrokers.push(`Kotak Neo (${getBrokerClientId('kotakNeo')})`);
+  if (snap.brokers?.dhan) enabledBrokers.push(`Dhan (${getBrokerClientId('dhan')})`);
   const modeIcon = snap.state === 'running' ? '▶️' : snap.state === 'paused' ? '⏸️' : '⏹️';
   const lines = [];
   const timeLine = snap.runAt2
@@ -495,10 +504,7 @@ function startTelegramControl() {
         const chatId = msg.chat?.id;
         const text = msg.text;
         if (!chatId || !text) continue;
-        if (!isAllowedTelegramChat(chatId)) {
-          await sendTelegramPlain(chatId, 'Only the configured chat can control this bot. Use the chat ID set in Settings.');
-          continue;
-        }
+        
         try {
           await handleTelegramCommand(text, chatId);
         } catch (err) {
@@ -560,6 +566,16 @@ function buildFlattradeCredentialsResponse() {
   };
 }
 
+function getDhanEnv() {
+  const creds = loadCredentials();
+  const d = creds.dhan || {};
+  return {
+    DHAN_USER_ID: d.userId || process.env.DHAN_USER_ID,
+    DHAN_TOTP: d.totp || process.env.DHAN_TOTP,
+    DHAN_MPIN: d.mpin || process.env.DHAN_MPIN,
+  };
+}
+
 function buildKotakCredentialsResponse() {
   const env = getKotakNeoEnv();
   const hasClientId = !!env.KOTAKNEO_CLIENT_ID;
@@ -577,6 +593,21 @@ function buildKotakCredentialsResponse() {
   };
 }
 
+function buildDhanCredentialsResponse() {
+  const env = getDhanEnv();
+  const hasUserId = !!env.DHAN_USER_ID;
+  const hasTotp = !!env.DHAN_TOTP;
+  const hasMpin = !!env.DHAN_MPIN;
+  return {
+    configured: hasUserId && hasTotp && hasMpin,
+    userId: maskValue(env.DHAN_USER_ID),
+    totp: env.DHAN_TOTP
+      ? (String(env.DHAN_TOTP).length <= 6 ? '••••••' : maskValue(env.DHAN_TOTP, 0, 2))
+      : '',
+    mpin: env.DHAN_MPIN ? '••••••' : '',
+  };
+}
+
 function runScriptSubprocess({ scriptName, env, timeoutMessage }) {
   return new Promise((resolve) => {
     const scriptPath = path.join(__dirname, 'scripts', scriptName);
@@ -584,6 +615,7 @@ function runScriptSubprocess({ scriptName, env, timeoutMessage }) {
       cwd: __dirname,
       env,
       stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
     });
 
     let stdout = '';
@@ -657,6 +689,18 @@ function runKotakNeoLoginSubprocess(headed = false) {
   });
 }
 
+function runDhanLoginSubprocess(headed = false) {
+  return runScriptSubprocess({
+    scriptName: 'dhan-login.js',
+    env: {
+      ...process.env,
+      ...getDhanEnv(),
+      ...(headed ? { HEADED: '1' } : {}),
+    },
+    timeoutMessage: 'Login timed out after 2 minutes. Try again or run: npm run dhan',
+  });
+}
+
 async function withRunLock(source, work) {
   if (runRuntime.isRunning) {
     return {
@@ -716,6 +760,22 @@ async function runSelectedBrokers({ headed = false, brokers = automationStore.br
     }
   }
 
+  if (brokers.dhan) {
+    const result = await runDhanLoginSubprocess(headed);
+    statusStore.dhan = result;
+    summary.brokers.dhan = result;
+    summary.success = summary.success && !!result.success;
+    const dhanId = getBrokerClientId('dhan');
+    logActivity(
+      result.success ? 'success' : 'error',
+      `Dhan (${dhanId})`,
+      result.success ? 'Login successful' : `Failed: ${result.error || result.step || 'unknown'}`,
+    );
+    if (!result.success) {
+      tgNotify('❌ Dhan Login', `${getBrokerClientId('dhan')}${result.error ? ' — ' + result.error : ''}`);
+    }
+  }
+
   summary.completedAt = new Date().toISOString();
 
   logActivity(
@@ -772,7 +832,7 @@ function computeNextRunAt(now = new Date()) {
     return null;
   }
 
-  if (!automationStore.brokers.flattrade && !automationStore.brokers.kotakNeo) {
+  if (!automationStore.brokers.flattrade && !automationStore.brokers.kotakNeo && !automationStore.brokers.dhan) {
     return null;
   }
 
@@ -818,9 +878,11 @@ function shouldSkipSlotDueToScheduleChange(now, todayKey, scheduledTime) {
 async function automationTick() {
   maybeResumeExpiredPause();
 
+  if (Date.now() - SERVER_STARTED_AT < STARTUP_GRACE_MS) return;
+
   if (!automationStore.enabled || automationStore.state !== 'running') return;
   if (runRuntime.isRunning) return;
-  if (!automationStore.brokers.flattrade && !automationStore.brokers.kotakNeo) return;
+  if (!automationStore.brokers.flattrade && !automationStore.brokers.kotakNeo && !automationStore.brokers.dhan) return;
 
   const now = new Date();
   const todayKey = getLocalDateKey(now);
@@ -867,6 +929,7 @@ app.get('/api/status', (req, res) => {
   res.json({
     flattrade: statusStore.flattrade,
     kotakNeo: statusStore.kotakNeo ?? { configured: false, message: 'Not set up yet' },
+    dhan: statusStore.dhan ?? { configured: false, message: 'Not set up yet' },
     automation: getAutomationSnapshot(),
   });
 });
@@ -938,6 +1001,38 @@ app.post('/api/kotakneo/login', async (req, res) => {
   res.json(result);
 });
 
+app.get('/api/credentials/dhan', (req, res) => {
+  res.json(buildDhanCredentialsResponse());
+});
+
+app.put('/api/credentials/dhan', (req, res) => {
+  const { userId, totp, mpin } = req.body || {};
+  const creds = loadCredentials();
+  creds.dhan = creds.dhan || {};
+  if (userId !== undefined) creds.dhan.userId = String(userId).trim();
+  if (totp !== undefined) creds.dhan.totp = String(totp).trim();
+  if (mpin !== undefined) creds.dhan.mpin = String(mpin).trim();
+  saveCredentials(creds);
+  res.json({ ok: true, message: 'Dhan credentials updated' });
+});
+
+app.post('/api/dhan/login', async (req, res) => {
+  const headed = req.body?.headed === true;
+  const result = await withRunLock('manual:dhan', async () => {
+    const run = await runDhanLoginSubprocess(headed);
+    statusStore.dhan = run;
+    return run;
+  });
+  if (result.step === 'busy') {
+    statusStore.dhan = result;
+  }
+  tgNotify(
+    result.success ? '✅ Dhan Login' : '❌ Dhan Login',
+    `${getBrokerClientId('dhan')}${!result.success && result.error ? ' — ' + result.error : ''}`,
+  );
+  res.json(result);
+});
+
 /* ── Telegram API ───────────────────────────────────── */
 
 app.get('/api/credentials/telegram', (req, res) => {
@@ -995,6 +1090,7 @@ app.put('/api/automation', (req, res) => {
   const brokers = {
     flattrade: req.body?.brokers?.flattrade !== undefined ? req.body.brokers.flattrade === true : automationStore.brokers.flattrade,
     kotakNeo: req.body?.brokers?.kotakNeo !== undefined ? req.body.brokers.kotakNeo === true : automationStore.brokers.kotakNeo,
+    dhan: req.body?.brokers?.dhan !== undefined ? req.body.brokers.dhan === true : automationStore.brokers.dhan,
   };
 
   if (!/^\d{2}:\d{2}$/.test(runAt)) {
@@ -1105,6 +1201,10 @@ app.get('/automation', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'automation.html'));
 });
 
+app.get('/docs', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'docs.html'));
+});
+
 app.get('/dashboard', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
@@ -1127,6 +1227,7 @@ setTimeout(() => {
 
 startTelegramControl();
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Quantman Login Dashboard: http://localhost:${PORT}`);
+  console.log(`Network access: http://192.168.1.50:${PORT}`);
 });
