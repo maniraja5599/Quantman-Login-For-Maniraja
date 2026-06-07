@@ -1,3 +1,5 @@
+Set fso = CreateObject("Scripting.FileSystemObject")
+scriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
 Set WshShell = CreateObject("WScript.Shell")
-WshShell.CurrentDirectory = "E:\Projects\Quantman Login For Maniraja"
+WshShell.CurrentDirectory = scriptDir
 WshShell.Run "node server.js", 0, False
