@@ -739,9 +739,6 @@ async function runSelectedBrokers({ headed = false, brokers = automationStore.br
       `Flattrade (${ftId})`,
       result.success ? 'Login successful' : `Failed: ${result.error || result.step || 'unknown'}`,
     );
-    if (!result.success) {
-      tgNotify('❌ Flattrade Login', `${getBrokerClientId('flattrade')}${result.error ? ' — ' + result.error : ''}`);
-    }
   }
 
   if (brokers.kotakNeo) {
@@ -755,9 +752,6 @@ async function runSelectedBrokers({ headed = false, brokers = automationStore.br
       `Kotak Neo (${knId})`,
       result.success ? 'Login successful' : `Failed: ${result.error || result.step || 'unknown'}`,
     );
-    if (!result.success) {
-      tgNotify('❌ Kotak Neo Login', `${getBrokerClientId('kotakNeo')}${result.error ? ' — ' + result.error : ''}`);
-    }
   }
 
   if (brokers.dhan) {
@@ -771,9 +765,6 @@ async function runSelectedBrokers({ headed = false, brokers = automationStore.br
       `Dhan (${dhanId})`,
       result.success ? 'Login successful' : `Failed: ${result.error || result.step || 'unknown'}`,
     );
-    if (!result.success) {
-      tgNotify('❌ Dhan Login', `${getBrokerClientId('dhan')}${result.error ? ' — ' + result.error : ''}`);
-    }
   }
 
   summary.completedAt = new Date().toISOString();
